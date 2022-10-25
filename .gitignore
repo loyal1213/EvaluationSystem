@@ -4,10 +4,10 @@
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
 # User-specific files
-*.rsuser
+#*.rsuser
 #*.suo
-*.user
-*.userosscache
+#*.user
+#*.userosscache
 #*.sln.docstates
 
 # User-specific files (MonoDevelop/Xamarin Studio)
@@ -100,8 +100,8 @@ _Chutzpah*
 ipch/
 *.aps
 *.ncb
-*.opendb
-*.opensdf
+#*.opendb
+#*.opensdf
 #*.sdf
 *.cachefile
 *.VC.db
