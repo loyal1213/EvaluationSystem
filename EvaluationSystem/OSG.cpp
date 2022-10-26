@@ -122,7 +122,7 @@ COSG::COSG(HWND hWnd) :
 	m_hWnd(hWnd),
 	label_event_(nullptr)
 {
-	m_vec3RibbonColor_.set(1.0f, 1.0f, 0.0f); // 设置彩带颜色为红色
+	m_vec3RibbonColor_.set(1.0f, 0.0f, 0.0f); // 设置彩带颜色为红色
 }
 
 COSG::~COSG()
@@ -139,10 +139,13 @@ void COSG::InitOSG(std::string modelname)
 	// Store the name of the model to load
 	m_ModelName = modelname;
 
-	// Init different parts of OSG
 	InitManipulators();
 
-	InitSceneGraph();
+	// Init different parts of OSG
+	if (!InitSceneGraph()){
+		AfxMessageBox("读取earth文件失败, 请确认配置路径是否正确, 即将退出程序 !", MB_OK, MB_ICONWARNING);
+		ExitProcess(0);
+	}
 
 	InitCameraConfig();
 
@@ -230,8 +233,8 @@ void COSG::AddCompass()
 	// 添加指南针
 	osg::ref_ptr<Compass> compass = new Compass;
 	compass->setProjectionMatrix(osg::Matrixd::ortho(-1.5, 1.5, -1.5, 1.5, -10.0, 10.0));
-	compass->setPlate(createCompassPart("c:/track_data/images/panzi.png", 1.5f, -1.0f)); //圆盘图片
-	compass->setNeedle(createCompassPart("c:/track_data/images/noddle.png", 1.5f, 0.0f));//指针图片
+	compass->setPlate(createCompassPart("../data/images/panzi.png", 1.5f, -1.0f)); //圆盘图片
+	compass->setNeedle(createCompassPart("../data/images/noddle.png", 1.5f, 0.0f));//指针图片
 	compass->setWidthHeight(10,10,100,100); //起始点、宽高
 	compass->setMainCamera(mViewer->getCamera());
 
@@ -266,18 +269,18 @@ void COSG::InitManipulators(void)
 }
 
 
-void COSG::InitSceneGraph(void)
+bool COSG::InitSceneGraph(void)
 {
 	// Init the main Root Node/Group
 	mRoot  = new osg::Group;
 
 	// Load the Model from the model name
 	mModel = osgDB::readNodeFile(m_ModelName);
-	if (!mModel) return;
+	if (!mModel) return false;
 
 	//查询地图节点
 	earth_map_node_ = osgEarth::MapNode::findMapNode(mModel);
-	if (!earth_map_node_) return;
+	if (!earth_map_node_) return false;
 
 	earth_manipulator_->setNode(earth_map_node_);
 	earth_manipulator_->getSettings()->setArcViewpointTransitions(true);
@@ -290,6 +293,7 @@ void COSG::InitSceneGraph(void)
 	// Add the model to the scene
 	mRoot->addChild(mModel.get());
 
+	return true;
 }
 
 void COSG::InitCameraConfig(void)
@@ -506,13 +510,14 @@ void COSG::AddViewPointLable()
 	}
 
 	canvas_ = osgEarth::Util::Controls::ControlCanvas::getOrCreate(mViewer);
+	osg::ref_ptr<osgText::Font> font = osgText::readFontFile("../data/fonts/msyh.ttf");
 
-	// 添加控件，用来显示视点信息
-	osgEarth::Util::Controls::LabelControl* mouse_coords = new osgEarth::Util::Controls::LabelControl(TEXT("mouse_point"), Color::White);
+	// 添加控件，用来显示鼠标信息
+	osgEarth::Util::Controls::LabelControl* mouse_coords = new osgEarth::Util::Controls::LabelControl("", Color::White);
 	mouse_coords->setBackColor(osgEarth::Util::Controls::Color(osgEarth::Util::Controls::Color::Green, 0.5));
-	mouse_coords->setFont(osgText::readFontFile("c:/track_data/fonts/msyh.ttf"));
+	mouse_coords->setFont(font.get());
 	mouse_coords->setEncoding(osgText::String::ENCODING_UTF8);
-	mouse_coords->setHaloColor(osg::Vec4(1.0, 0.5, 0.0, 1));
+	mouse_coords->setHaloColor(osg::Vec4(1.0, 0.5, 0.0, 0.5));
 	mouse_coords->setHorizAlign(osgEarth::Util::Controls::Control::ALIGN_RIGHT);
 	mouse_coords->setVertAlign(osgEarth::Util::Controls::Control::ALIGN_BOTTOM);
 	canvas_->addControl(mouse_coords);
@@ -521,23 +526,24 @@ void COSG::AddViewPointLable()
 	// osgEarth::Util::Controls::ControlCanvas* canvas = osgEarth::Util::Controls::ControlCanvas::get(mViewer);
 
 	// 添加控件用来显示视点信息
-	osgEarth::Util::Controls::LabelControl* view_coods = new osgEarth::Util::Controls::LabelControl("view_point",osg::Vec4(1.0,0.0,0.0,1.0));
-	view_coods->setFont(osgText::readFontFile("c:/track_data/fonts/msyh.ttf"));
+	osgEarth::Util::Controls::LabelControl* view_coods = new osgEarth::Util::Controls::LabelControl("", Color::White);
+	view_coods->setBackColor(osgEarth::Util::Controls::Color(osgEarth::Util::Controls::Color::Green, 0.5));
+	view_coods->setFont(font.get());
 	view_coods->setEncoding(osgText::String::ENCODING_UTF8);
-	// view_coods->setHaloColor(osg::Vec4(1.0, 0.5, 0.0, 1));
+	view_coods->setHaloColor(osg::Vec4(1.0, 0.5, 0.0, 0.5));
 	view_coods->setHorizAlign(osgEarth::Util::Controls::Control::ALIGN_LEFT);
 	view_coods->setVertAlign(osgEarth::Util::Controls::Control::ALIGN_TOP);
-	view_coods->setBackColor(osg::Vec4(0,0,0,0.5));
+	//view_coods->setBackColor(osg::Vec4(0,0,0,0.5));
 	//view_coods->setSize(500,50);
 	view_coods->setMargin(10);
 	canvas_->addControl(view_coods);
 
 	// 添加控件，用来显示飞机信息
-	osgEarth::Util::Controls::LabelControl* fly_coords = new osgEarth::Util::Controls::LabelControl(TEXT("fly_point"), Color::White);
+	osgEarth::Util::Controls::LabelControl* fly_coords = new osgEarth::Util::Controls::LabelControl(TEXT(""), Color::White);
 	fly_coords->setBackColor(osgEarth::Util::Controls::Color(osgEarth::Util::Controls::Color::Green, 0.5));
-	fly_coords->setFont(osgText::readFontFile("c:/track_data/fonts/msyh.ttf"));
+	fly_coords->setFont(font.get());
 	fly_coords->setEncoding(osgText::String::ENCODING_UTF8);
-	fly_coords->setHaloColor(osg::Vec4(1.0, 0.5, 0.0, 1));
+	fly_coords->setHaloColor(osg::Vec4(1.0, 0.5, 0.0, 0.5));
 	fly_coords->setHorizAlign(osgEarth::Util::Controls::Control::ALIGN_RIGHT);
 	fly_coords->setVertAlign(osgEarth::Util::Controls::Control::ALIGN_TOP);
 	canvas_->addControl(fly_coords);
@@ -580,7 +586,7 @@ osg::MatrixTransform* COSG::createCompassPart(const std::string &image, float ra
 int COSG::AddAirPlane(void)
 {
 	//模型1
-	node_airfly_ = osgDB::readNodeFile("c:/track_data/aircrafts/F-16.ive");
+	node_airfly_ = osgDB::readNodeFile("../data/aircrafts/F-16.ive");
 	
 	//没有这句代码，飞机是黑色的
 	node_airfly_->getOrCreateStateSet()->setMode(GL_RESCALE_NORMAL, osg::StateAttribute::ON); // 设置属性，光照法线

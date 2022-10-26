@@ -218,7 +218,7 @@ void CEvaluationSystemView::OnInitialUpdate()
 	// TODO: 在此添加专用代码和/或调用基类
 	// Get Filename from DocumentOpen Dialog
 	// CString csFileName = "C:/Program Files (x86)/OsgEarth/osgearth_src/tests/online.earth"; //gdal_interp.earth";
-	CString csFileName = "c:/track_data/earth_file/mapbox_example.earth";
+	CString csFileName = "../data/earth_files/mapbox_example.earth";
 	//CString csFileName = GetDocument()->GetFileName();
 	
 	// Init the osg class

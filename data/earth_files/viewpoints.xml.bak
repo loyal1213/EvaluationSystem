@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+<viewpoints>
+	<viewpoint name="chabuya_airport" heading="30" height="150.0" lat="27.4517890000" long="95.1042700000" pitch="-20" range="1000"/> 
+	<viewpoint name="gaohaidi_airport" heading="30" height="100" lat="26.0946230000" long="91.5800230000" pitch="-20" range="1000"/>
+	<viewpoint name="gongga_airport" heading="30" height="3573.0" lat="29.2979780000" long="90.8916550000" pitch="-20" range="1000"/>
+	<viewpoint name="rikaze_airport" heading="30" height="3785.0" lat="29.3515670000" long="89.3362030000" pitch="-20" range="1000"/>
+	<viewpoint name="tezqur_airport" heading="30" height="5000" lat="26.6982190000" long="92.7721190000" pitch="-20" range="1000"/>
+	<viewpoint name="xilong_airport" heading="30" height="5000" lat="25.6973370000" long="91.9726850000" pitch="-20" range="1000"/>
+	<viewpoint name="zhuohate" heading="30" height="99" lat="26.7189650000" long="94.1631270000" pitch="-20" range="1000"/>
+</viewpoints>

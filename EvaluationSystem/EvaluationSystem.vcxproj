@@ -121,6 +121,7 @@
     <ClInclude Include="BuildRader.h" />
     <ClInclude Include="BuildRaderCallback.h" />
     <ClInclude Include="Compass.h" />
+    <ClInclude Include="ControlListLabel.h" />
     <ClInclude Include="CreateTrackCallbcak.h" />
     <ClInclude Include="EvaluationSystem.h" />
     <ClInclude Include="EvaluationSystemDoc.h" />
@@ -142,6 +143,7 @@
     <ClCompile Include="BuildRader.cpp" />
     <ClCompile Include="BuildRaderCallback.cpp" />
     <ClCompile Include="Compass.cpp" />
+    <ClCompile Include="ControlListLabel.cpp" />
     <ClCompile Include="CreateTrackCallbcak.cpp" />
     <ClCompile Include="EvaluationSystem.cpp" />
     <ClCompile Include="EvaluationSystemDoc.cpp" />
