@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+<map name="TrackService" type="geocentric" version="2">
+	<!--全球影像图-->
+	<image name="世界影像图" driver="gdal" visible ="true">
+		<url>C:/track_data/world_data/world.tif</url>
+	</image>
+	<!--全球高程图-->
+	<heightfield name="全球高程图" driver="gdal">
+		<url>C:/track_data/images/srtm30plus.tif</url>
+	</heightfield>
+	<feature_source name="world-data" driver="ogr">
+		<url>C:/track_data/shps/world.shp</url>
+		<convert type="line"/>
+	</feature_source>
+	<feature_model name="国界线" feature_source="world-data">
+		<!--<layout tile_size="500000" crop_features="true" paged="true">
+			<level max_range="1e10"/>
+		</layout>-->
+		<styles>
+			<style type="text/css">
+                world {
+                   stroke:                   #ffff00;
+                   stroke-width:             2px;
+                   stroke-tessellation-size: 1km;
+                   render-lighting:          false;
+                   altitude-clamping:        terrain-gpu;
+                   render-depth-offset:      true;                   
+                }            
+			</style>
+		</styles>
+	</feature_model>
+	<feature_model name="省界线">
+		<features name="province" driver="ogr">
+			<url>C:/track_data/shps/provincial_boundaries.shp</url>
+			<build_spatial_index>true</build_spatial_index>
+		</features>
+		<styles>
+			<style type="text/css">
+                world {
+                   stroke:             #ffffff;
+                   stroke-width:       1px;
+                   altitude-clamping:  terrain-drape;
+                   render-lighting:    false;
+                }            
+			</style>
+		</styles>
+	</feature_model>
+	<feature_model name="县界线">
+		<features name="country" driver="ogr">
+			<url>C:/track_data/shps/country_boundaries.shp</url>
+			<build_spatial_index>true</build_spatial_index>
+		</features>
+		<geometry_type>line</geometry_type>
+		<relative_line_size>true</relative_line_size>
+		<styles>
+			<style type="text/css">
+                world {
+                   stroke:             #FFF8DC;
+                   stroke-width:       0.8px;
+                   altitude-clamping:  terrain-drape;
+                   stroke-opacity: 		 0.8px;
+                }            
+			</style>
+		</styles>
+	</feature_model>
+
+	<options lighting="false"/>
+	<screen_space_layout>
+		<out_animation_time>  0.0  </out_animation_time>
+		<in_animation_time>   0.25 </in_animation_time>
+		<min_animation_scale> 0.45 </min_animation_scale>
+		<min_animation_alpha> 0.35 </min_animation_alpha>
+		<sort_by_priority>    true </sort_by_priority>
+	</screen_space_layout>
+	<!--文件缓存-->
+	<options>
+		<cache type="filesystem"  visible ="true">
+			<path>c:/osgearth_cache</path>
+			<terrain normal_maps="true"/>
+		</cache>
+	</options>
+	<!--<sky driver="gl"/>-->
+	<xi:include href="C:/track_data/earth_file/viewpoints.xml"/>
+</map>

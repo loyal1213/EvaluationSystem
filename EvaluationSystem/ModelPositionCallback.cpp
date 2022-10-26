@@ -31,11 +31,11 @@ void ModelPositionCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 	osg::MatrixTransform* mt = dynamic_cast<osg::MatrixTransform*>(node);
 	if (mt){
 		osg::Matrix matrix;
-		csn_->getEllipsoidModel()->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(_latitude), osg::DegreesToRadians(_longitude), fabs(2000.0f), matrix);
-		matrix.preMult(osg::Matrix::scale(10, 10, 10)*osg::Matrix::rotate(osg::inDegrees(140.0f), osg::Vec3(0, 0, 1)));
+		csn_->getEllipsoidModel()->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(_latitude), osg::DegreesToRadians(_longitude), fabs(500.0f), matrix);
+		matrix.preMult(osg::Matrix::scale(10, 10, 10)*osg::Matrix::rotate(osg::inDegrees(144.0f), osg::Vec3(0, 0, 1)));
 		mt->setMatrix(matrix);
-		_longitude -= 0.01;
-		_latitude -= 0.01;
+		_longitude -= 0.00005;
+		_latitude -= 0.00005;
 		_rotation += 0.00;
 	}
 	traverse(node,nv);
@@ -52,11 +52,17 @@ void ModelPositionCallback::OnRecv(const char* buf, USHORT len, const char* from
 		  dlc_data->fPsi,dlc_data->fTheta,dlc_data->fGama,\
 		  dlc_data->fAlpha,dlc_data->fBeta,dlc_data->fVel);
 	// _height = dlc_data->fHeight;
-	/*_longitude = dlc_data->dbLong;
-	_latitude = dlc_data->dbLati;
-	_height = dlc_data->fHeight;
-	_speed = dlc_data->fVel;
-	_heading = dlc_data->fPsi;*/
+	if ( fabs(dlc_data->dbLong) > 0 && fabs(dlc_data->dbLong) < 180 && \
+		 fabs(dlc_data->dbLati) > 0 && fabs(dlc_data->dbLati) < 90
+		)
+	{
+		/*_longitude = dlc_data->dbLong;
+		_latitude = dlc_data->dbLati;
+		_height = dlc_data->fHeight;
+		_speed = dlc_data->fVel;
+		_heading = dlc_data->fPsi;*/
+	}
+
 	// osg::Quat               _rotation;
 	//double                  _speed;
 	// earth_manipulator_->setViewpoint(osgEarth::Viewpoint("view_point5", dlc_data->dbLong, dlc_data->dbLati, 4000, -60, -90, 1000), 1.0);
@@ -66,27 +72,6 @@ ModelPositionCallback::~ModelPositionCallback(void)
 {
 }
 
-osg::Node* createEarth()
-{
-	osg::TessellationHints* hints = new osg::TessellationHints;
-	hints->setDetailRatio(5.0f);
-
-
-	osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Sphere(osg::Vec3(0.0,0.0,0.0), osg::WGS_84_RADIUS_POLAR), hints);
-
-	osg::Geode* geode = new osg::Geode;
-	geode->addDrawable(sd);
-
-	std::string filename = osgDB::findDataFile("Images/land_shallow_topo_2048.jpg");
-	geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, new osg::Texture2D(osgDB::readRefImageFile(filename)));
-
-	osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode;
-	csn->setEllipsoidModel(new osg::EllipsoidModel());
-	csn->addChild(geode);
-
-	return csn;
-
-}
 
 FindNamedNodeVisitor::FindNamedNodeVisitor(const std::string& name)
 	: osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),

@@ -43,7 +43,7 @@ bool CLabelControlEventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::
 		}
 	}
 
-	if (ea.getEventType() == ea.FRAME){	
+	if (ea.getEventType()){	
 		osgEarth::Util::EarthManipulator * em = dynamic_cast<osgEarth::Util::EarthManipulator*>(viewer->getCameraManipulator());
 		if (em == nullptr){
 			return  false;
@@ -56,10 +56,6 @@ bool CLabelControlEventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::
 		double pitch = view_point.getPitch();
 		double rangle = view_point.getRange();
 		switch(ea.getEventType()){
-		case osgGA::GUIEventAdapter::DOUBLECLICK: break;
-		case osgGA::GUIEventAdapter::PUSH: break;
-		case osgGA::GUIEventAdapter::RELEASE: break;
-		case osgGA::GUIEventAdapter::SCROLL:break;
 		case osgGA::GUIEventAdapter::KEYDOWN: {
 				if (ea.getKey() == 'X'){		// focalPoint	焦点：相机的焦点位置，是一个地理坐标（含高程）
 					fx++;	

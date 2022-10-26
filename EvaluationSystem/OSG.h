@@ -64,11 +64,11 @@
 #include "LabelControlEventHandler.h"
 #include "BuildRader.h"
 
-class cOSG
+class COSG
 {
 public:
-    cOSG(HWND hWnd);
-    ~cOSG();
+    COSG(HWND hWnd);
+    ~COSG();
 
     void InitOSG(std::string filename);
 
@@ -83,23 +83,20 @@ public:
     bool Done(void) { return mDone; }
     //static void Render(void* ptr);
 
-    osgViewer::Viewer* getViewer() { return mViewer; }
+    osg::ref_ptr<osgViewer::Viewer> getViewer() { return mViewer; }
 protected:
 	// 创建星空
 	int CreateStarrySky(void);
 	// 添加标签控件，显示经纬度高度
 	void AddViewPointLable();
 	// 添加指南针
-	osg::MatrixTransform *cOSG::createCompassPart(const std::string &image, float radius, float height);
-
-protected:
-	// virtual void OnRecv(const char* buf, USHORT len, const char* fromIp, USHORT fromPort) override;
+	osg::MatrixTransform *COSG::createCompassPart(const std::string &image, float radius, float height);
 
 private:
     bool mDone;
     std::string m_ModelName;
     HWND m_hWnd;
-    osgViewer::Viewer* mViewer;
+    osg::ref_ptr<osgViewer::Viewer> mViewer;
     osg::ref_ptr<osg::Group> mRoot;
     osg::ref_ptr<osg::Node> mModel;
     osg::ref_ptr<osgGA::TrackballManipulator> trackball;
@@ -134,12 +131,12 @@ public:
 private:
 	// 主要用来处理雷达相关操作
 	CBuildRader m_pBuildRader;
-
 public:
 	int AddAirPlane(void);
 	void DoPreLineNow();
-//	osg::Node* loadFly();
 	int AddAnnotation(void);
+	osg::ref_ptr<osg::AnimationPath> CreateAnimationPath(const GeoPoint& pos, const SpatialReference* mapSRS, float radius, double looptime);
+	osg::ref_ptr<osg::Node> CreatePlane(osg::Node* node, const GeoPoint& pos, const SpatialReference* mapSRS, double radius, double time);
 public:
 	// 创建飞机历史航迹
 	void AddBuildHistoryRoute(osg::MatrixTransform* scaler, float lineWidth);
@@ -151,24 +148,26 @@ public:
 	void RealTimeSimulation(bool is_track=true);
 	// 在右上角显示指南针
 	void AddCompass();
-	// 添加显示视点信息的控件
-//	void AddViewPointLabel(void);
 public:
 	int createControls(void);
 	int FlyTo(double longitude, double latitude, double altitude, double height, double heading, double pitch, double range);
 	int StartFly(void);
+	// 添加帧率标签
+	int AddFrameRateLabel(void);
+	// 显示多维态势
+	int DisplaySituation(void);
 };
 
 class CRenderingThread : public OpenThreads::Thread
 {
 public:
-    CRenderingThread( cOSG* ptr );
+    CRenderingThread( COSG* ptr );
     virtual ~CRenderingThread();
 
     virtual void run();
 
 protected:
-    cOSG* _ptr;
+    COSG* _ptr;
     bool _done;
 };
 
@@ -177,4 +176,19 @@ class UpdateCompass : public osg::NodeCallback
 {
 public:
 	virtual void operator()(osg::Node* node, osg::NodeVisitor* nv);
+};
+
+
+
+class GetFrameRate :public osgGA::GUIEventHandler
+{
+public:
+	GetFrameRate(osgEarth::Util::LabelControl* fpsLabelContral);
+
+	bool handle(const osgGA::GUIEventAdapter&ea, osgGA::GUIActionAdapter&aa);
+
+public:
+	double curFrameNum, curTime, nextFrameNum, nextTime;
+	double fps;
+	osgEarth::Util::LabelControl* fpsLabel;
 };

@@ -1,0 +1,405 @@
+<?xml version="1.0"?>
+<map version="2">
+
+ <image driver="gdal" name="world-tiff">
+       	<url>base.tif</url>
+    </image>
+
+
+    <heightfield driver="tms" name="dem">
+	<url>F:\tms\2018wuhan_dem\tms.xml</url>
+    </heightfield>
+
+    <image driver="tms" name="dom150m">
+        <url>F:\world150m\tms.xml</url>
+    </image>
+
+    <image driver="tms" name="dom15m">
+        <url>F:\china15m\tms.xml</url>
+    </image>
+
+
+
+
+
+	<model name="AIR_LaoHeKou" driver="simple">
+	        <url>../buildings/AIR_LaoHeKou.ive</url>
+		<location>111.699770 32.375609 90.0</location>
+	</model>
+
+	<model name="AIR_WuChang" driver="simple">
+	        <url>../buildings/AIR_WuChang.ive</url>
+		<location>114.326476 30.092494 46.0</location>
+	</model>
+
+        <model name="AIR_XiangTang" driver="simple">
+	        <url>../buildings/AIR_XiangTang.ive</url>
+		<location>115.922436 28.410936 26.0</location>
+	</model>
+
+	<model name="AIR_YangLuo" driver="simple">
+	        <url>../buildings/AIR_YangLuo.ive</url>
+		<location>114.640285 30.685413 44.0</location>
+	</model>
+
+	<model name="AIR_ZhengZhou" driver="simple">
+	        <url>../buildings/AIR_ZhengZhou.ive</url>
+		<location>113.709819 34.778916 89.0</location>
+	</model>
+
+	<model name="AIR_xinzhu" driver="simple">
+	        <url>../buildings/AIR_xinzhu.ive</url>
+		<location>120.927060 24.806058 11.0</location>
+	</model>
+
+	<model name="AIR_taoyuan" driver="simple">
+	        <url>../buildings/AIR_taoyuan.ive</url>
+		<location>121.231114 25.046507 72.0</location>
+	</model>
+
+	<model name="AIR_JiaYi" driver="simple">
+	        <url>../buildings/AIR_JiaYi.ive</url>
+		<location>120.390788 23.449605 0.0</location>
+	</model>
+
+
+
+
+<!--演习规划区-->
+<model name="facelayer1" driver="feature_geom" opacity="0.65">
+        <features name="world" driver="ogr">
+            <url>../TrainingArea/</url>
+
+            <buffer distance="-0.05" />
+        </features>
+	<styles>        
+            <style type="text/css">
+                default {
+		    fill:          #6cb1ff;
+                    stroke:		   #0000c8;
+                    stroke-width:  0px;
+		altitude-clamping:terrain-drape;
+                }
+            </style>
+        </styles> 
+
+       
+    </model>
+
+
+<!--边界线-->
+<model name="line_bj" driver="feature_geom" opacity="1.0">
+        <features name="bj" driver="ogr">
+            <url>../TrainingArea/</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>        
+        <styles>        
+            <style type="text/css">
+                default {
+                    stroke:		   #ff00000;
+                    stroke-width: 4px;
+			altitude-clamping:terrain-drape;
+                }
+            </style>
+        </styles>        
+    </model>
+
+
+	
+<!--分界线-->
+    <model name="line_fj" driver="feature_geom" opacity="1.0">
+        <features name="fj" driver="ogr">
+            <url>../TrainingArea/</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>        
+        <styles>        
+            <style type="text/css">
+                default {
+                    stroke:		   #0000ff;
+                    stroke-width:  3px;
+			altitude-clamping:terrain-drape;
+                }
+            </style>
+        </styles>        
+    </model>
+
+    <model name="line_fj1" driver="feature_geom" opacity="1.0">
+        <features name="fj" driver="ogr">
+            <url>../TrainingArea/</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>        
+        <styles>        
+            <style type="text/css">
+                default {
+                    stroke:		   #0000c8;
+                    stroke-width:  3px;
+			altitude-clamping:terrain-drape;
+                }
+            </style>
+        </styles>        
+    </model>
+
+    <model name="line_fj1" driver="feature_geom" opacity="1.0">
+        <features name="fj" driver="ogr">
+            <url>../TrainingArea/</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>        
+        <styles>        
+            <style type="text/css">
+                default {
+                    stroke:		   #0000c8;
+                    stroke-width:  3px;
+			altitude-clamping:terrain-drape;
+                }
+            </style>
+        </styles>        
+    </model>
+	
+<!--轨迹线-->
+    <model name="line_gj" driver="feature_geom" opacity="1.0">
+        <features name="gj" driver="ogr">
+            <url>../TrainingArea/</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>        
+        <styles>        
+            <style type="text/css">
+                default {
+                    stroke:		   #ff0000;
+                    stroke-width:  3px;
+			altitude-clamping:terrain-drape;
+                }
+            </style>
+        </styles>        
+    </model>
+
+
+<!--空域-->
+    <model name="line_ky" driver="feature_geom" opacity="1.0">
+        <features name="ky" driver="ogr">
+            <url>../TrainingArea/hj.shp</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>        
+        <styles>        
+            <style type="text/css">
+                default {
+                    stroke:		   #ff0000;
+                    stroke-width:  2px;
+			altitude-clamping:terrain-drape;
+                }
+            </style>
+        </styles>        
+    </model>
+
+
+    <model name="line_ky" driver="feature_geom" opacity="1.0">
+        <features name="ky" driver="ogr">
+            <url>../TrainingArea/lj.shp</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>        
+        <styles>        
+            <style type="text/css">
+                default {
+                    stroke:		    #0000ff;
+                    stroke-width:  2px;
+			altitude-clamping:terrain-drape;
+                }
+            </style>
+        </styles>        
+    </model>
+
+
+
+    <model name="line_ky" driver="feature_geom" opacity="1.0">
+        <features name="ky" driver="ogr">
+            <url>../TrainingArea/ljxky.shp</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>        
+        <styles>        
+            <style type="text/css">
+                default {
+                    stroke:		    #0000ff;
+                    stroke-width:  2px;
+			altitude-clamping:terrain-drape;
+                }
+            </style>
+        </styles>        
+    </model>
+
+
+ <model name="line_ky" driver="feature_geom" opacity="1.0">
+        <features name="ky" driver="ogr">
+            <url>../TrainingArea/</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>        
+        <styles>        
+            <style type="text/css">
+                default {
+                    stroke:		    #00ff00;
+                    stroke-width:  3px;
+			altitude-clamping:terrain-drape;
+                }
+            </style>
+        </styles>        
+    </model>
+    
+<!--标注-->
+      <model name="pointlayer" driver="feature_geom">
+        <features name="lable" driver="ogr">
+<url>../TrainingArea/</url>
+        </features>        
+
+        <styles>        
+            <style type="text/css">
+                cities {
+                    text-content: [NAME];
+		    text-declutter: true;
+		    text-fill:fefe41;
+		    text-size:20;
+		    altitude-offset: 100;
+                    altitude-clamping: terrain;
+		    altitude-technique: scene;
+		    text-font:fonts/simfang.ttf;
+                }
+            </style>
+        </styles>
+        <max_range>10000000</max_range>        
+    </model>
+
+ <model name="pointlayer" driver="feature_geom">       
+ <features name="lable" driver="ogr">
+<url>../TrainingArea/</url>
+        </features>        
+
+        <styles>        
+            <style type="text/css">
+                cities {
+                    text-content: [NAME];
+		    text-declutter: true;
+		    text-fill:fefe41;
+		    text-size:20;
+		    altitude-offset: 100;
+                    altitude-clamping: terrain;
+		    altitude-technique: scene;
+		    text-font:fonts/simfang.ttf;
+                }
+            </style>
+        </styles>
+        <max_range>10000000</max_range>        
+    </model>
+
+
+   
+	<mask driver="feature" name="mask_LaoHeKou">
+		<features driver="ogr">
+			<geometry>
+				POLYGON((111.704613 32.374157 90.0,
+					111.697678 32.372345 90.0,
+					111.687096 32.405975 90.0,
+					111.694550 32.407623 90.0
+					))
+			</geometry>
+		</features>
+	</mask>
+
+	<mask driver="feature" name="mask_WuChang">
+		<features driver="ogr">
+			<geometry>
+				POLYGON((114.328735 30.091415 46.0,
+					114.325180 30.096716 46.0,
+					114.298607 30.085672 46.0,
+					114.301720 30.079508 46.0
+					))
+			</geometry>
+		</features>
+	</mask>
+
+	<mask driver="feature" name="mask_XiangTang">
+		<features driver="ogr">
+			<geometry>
+				POLYGON((115.930321 28.434946 26.0,
+					115.926842 28.409325 26.0,
+					115.918930 28.410595 26.0,
+					115.922302 28.435684 26.0
+					))
+			</geometry>
+		</features>
+	</mask>
+
+	<mask driver="feature" name="mask_YangLuo">
+		<features driver="ogr">
+			<geometry>
+				POLYGON((114.644058 30.687298 44.0,
+                                        114.637177 30.691610 44.0,
+                                        114.615166 30.664667 44.0,
+					114.622444 30.659052 44.0
+					))
+			</geometry>
+		</features>
+	</mask>
+
+	<mask driver="feature" name="mask_ZhengZhou">
+		<features driver="ogr">
+			<geometry>
+				POLYGON((113.708374 34.782875 89.0,
+                                        113.706490 34.775120 89.0,
+					113.737320 34.768158 89.0,
+					113.738861 34.777016 89.0
+					))
+			</geometry>
+		</features>
+	</mask>
+
+	<mask driver="feature" name="mask_xinzhu">
+		<features driver="ogr">
+			<geometry>
+				POLYGON((120.957283 24.829884 11.0,
+                                        120.955307 24.817266 11.0,
+                                        120.937439 24.808754 11.0,
+					120.925186 24.802486 11.0,
+					120.920609 24.809139 11.0,
+                                        120.943008 24.832804 11.0,
+                                        120.953934 24.833071 11.0
+					))
+			</geometry>
+		</features>
+	</mask>
+
+	<mask driver="feature" name="mask_taoyuan">
+		<features driver="ogr">
+			<geometry>
+				POLYGON((121.209946 25.073406 72.0,
+                                        121.244041 25.101994 72.0,
+					121.268532 25.064306 72.0,
+					121.233627 25.034742 72.0
+					))
+			</geometry>
+		</features>
+	</mask>
+
+	<mask driver="feature" name="mask_JiaYi">
+		<features driver="ogr">
+			<geometry>
+				POLYGON((120.388779 23.480076 0.0,
+                                        120.389336 23.446182 0.0,
+					120.397392 23.446554 0.0,
+					120.396500 23.480513 0.0
+					))
+			</geometry>
+		</features>
+	</mask>
+
+<!---->
+<!--
+<external>
+
+	<viewpoint name="chabuya_airport" heading="30" height="150.0" lat="27.4517890000" long="95.1042700000" pitch="-20" range="1000"/> 
+	<viewpoint name="gaohaidi_airport" heading="30" height="100" lat="26.0946230000" long="91.5800230000" pitch="-20" range="1000"/>
+	<viewpoint name="gongga_airport" heading="30" height="3573.0" lat="29.2979780000" long="90.8916550000" pitch="-20" range="1000"/>
+	<viewpoint name="rikaze_airport" heading="30" height="3785.0" lat="29.3515670000" long="89.3362030000" pitch="-20" range="1000"/>
+	<viewpoint name="tezqur_airport" heading="30" height="5000" lat="26.6982190000" long="92.7721190000" pitch="-20" range="1000"/>
+	<viewpoint name="xilong_airport" heading="30" height="5000" lat="25.6973370000" long="91.9726850000" pitch="-20" range="1000"/>
+	<viewpoint name="zhuohate" heading="30" height="99" lat="26.7189650000" long="94.1631270000" pitch="-20" range="1000"/>
+
+</external>
+-->
+</map>

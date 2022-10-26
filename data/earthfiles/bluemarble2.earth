@@ -1,0 +1,6 @@
+<map name="bluemarble-tms" type="geocentric" version="2">
+	<!--Add a reference to the TMS xml file -->
+	<image name="bluemarble" driver="tms">
+		<url>c:/osgearth_cache/bluemarble/tms.xml</url>
+	</image>
+</map>

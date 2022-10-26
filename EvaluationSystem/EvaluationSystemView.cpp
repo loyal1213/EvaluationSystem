@@ -55,6 +55,8 @@ BEGIN_MESSAGE_MAP(CEvaluationSystemView, CView)
 	ON_UPDATE_COMMAND_UI(IDC_EDIT_PITCH, &CEvaluationSystemView::OnUpdateEditPitch)
 	ON_COMMAND(ID_EDIT_RANGE, &CEvaluationSystemView::OnEditRange)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_RANGE, &CEvaluationSystemView::OnUpdateEditRange)
+	ON_COMMAND(ID_BTN_TAKEOFF, &CEvaluationSystemView::OnBtnTakeoff)
+	ON_COMMAND(ID_BTN_SITUATION, &CEvaluationSystemView::OnBtnSituation)
 END_MESSAGE_MAP()
 
 // CEvaluationSystemView 构造/析构
@@ -127,7 +129,7 @@ void CEvaluationSystemView::OnRButtonUp(UINT /* nFlags */, CPoint point)
 void CEvaluationSystemView::OnContextMenu(CWnd* /* pWnd */, CPoint point)
 {
 #ifndef SHARED_HANDLERS
-	theApp.GetContextMenuManager()->ShowPopupMenu(IDR_POPUP_EDIT, point.x, point.y, this, TRUE);
+	// theApp.GetContextMenuManager()->ShowPopupMenu(IDR_POPUP_EDIT, point.x, point.y, this, TRUE); // MFC单文档项目右键菜单
 #endif
 }
 
@@ -162,8 +164,7 @@ int CEvaluationSystemView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		return -1;
 
 	// TODO:  在此添加您专用的创建代码
-	// Now that the window is created setup OSG
-	mOSG = new cOSG(m_hWnd);
+	mOSG = new COSG(m_hWnd);
 
 	return 0;
 }
@@ -189,12 +190,22 @@ void CEvaluationSystemView::OnDestroy()
 	CView::OnDestroy();
 
 	// TODO: 在此处添加消息处理程序代码
+	if (mOSG != 0)
+		delete mOSG;
+	//等待线程完成了再继续做其他事情
+	WaitForSingleObject(mThreadHandle,1000);
+
 }
 
 
 BOOL CEvaluationSystemView::OnEraseBkgnd(CDC* pDC)
 {
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
+	if (0 == mOSG){
+		return CView::OnEraseBkgnd(pDC);
+	}else{
+		return FALSE;
+	}
 
 	return CView::OnEraseBkgnd(pDC);
 }
@@ -207,7 +218,7 @@ void CEvaluationSystemView::OnInitialUpdate()
 	// TODO: 在此添加专用代码和/或调用基类
 	// Get Filename from DocumentOpen Dialog
 	// CString csFileName = "C:/Program Files (x86)/OsgEarth/osgearth_src/tests/online.earth"; //gdal_interp.earth";
-	CString csFileName = "c:/track_data/earth_file/online.earth";
+	CString csFileName = "c:/track_data/earth_file/mapbox_example.earth";
 	//CString csFileName = GetDocument()->GetFileName();
 	
 	// Init the osg class
@@ -318,7 +329,7 @@ void CEvaluationSystemView::OnCheckTrack()
 {
 	// TODO: 在此添加命令处理程序代码
 	is_track_=!is_track_;
-	mOSG->RealTimeSimulation(is_track_);
+	// mOSG->RealTimeSimulation(is_track_);
 	
 }
 
@@ -380,6 +391,18 @@ void CEvaluationSystemView::OnUpdateEditRange(CCmdUI *pCmdUI)
 // 飞机开始起飞
 int CEvaluationSystemView::StartTakeOff(void)
 {
-
 	return 0;
+}
+
+
+void CEvaluationSystemView::OnBtnTakeoff()
+{
+	mOSG->StartFly();
+}
+
+
+void CEvaluationSystemView::OnBtnSituation()
+{
+	// TODO: 在此添加命令处理程序代码
+	mOSG->DisplaySituation();
 }

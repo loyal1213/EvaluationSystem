@@ -25,7 +25,7 @@ osg::ref_ptr<osg::Geode> CBuildRader::BuildRader( float fRadius, float fHeight )
 	rpGeom->setVertexArray(rpVec3Array); //设置顶点
 	rpGeom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::TRIANGLES,0,rpVec3Array->size()));    //设置关联方式  三角形
 
-	rpVec4Array->push_back(osg::Vec4f(1,0,0,0.5));
+	rpVec4Array->push_back(osg::Vec4f(0.0f, 1.0f, 0.1f, 0.5));
 	rpGeom->setColorArray(rpVec4Array);    //设置顶点颜色
 	rpGeom->setColorBinding(osg::Geometry::BIND_PER_VERTEX); //设置关联方式
 

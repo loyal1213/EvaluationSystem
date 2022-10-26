@@ -27,14 +27,8 @@
 #include <osgEarthAnnotation/ImageOverlayEditor>
 
 #include <osgEarthSymbology/GeometryFactory>
-
+#include <osgEarth/GLUtils>
 #include <osgViewer/Viewer>
-
-using namespace osgEarth;
-using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
-using namespace osgEarth::Util;
-
 
 #include<Windows.h>
 #include<osgViewer/Viewer>
@@ -64,8 +58,7 @@ using namespace osgEarth::Util;
 #include <osgEarthUtil/GARSGraticule>
 #include "PickHandler.h"
 
-using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
+
 /******************************************************************/
 
 #include<Windows.h>
@@ -96,23 +89,43 @@ using namespace osgEarth::Annotation;
 //osgGA相关的库
 #include<osgGA/StateSetManipulator>
 
+/******************************************************************/
+
+#include <osg/Notify>
+#include <osgGA/StateSetManipulator>
+#include <osgGA/GUIEventHandler>
+#include <osgViewer/Viewer>
+#include <osgViewer/ViewerEventHandlers>
+#include <osgEarth/MapNode>
+#include <osgEarth/XmlUtils>
+#include <osgEarthUtil/EarthManipulator>
+#include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarthUtil/LinearLineOfSight>
+#include <osgEarthUtil/RadialLineOfSight>
+#include <osg/io_utils>
+#include <osg/MatrixTransform>
+#include <osg/Depth>
+#include<osg/LineWidth>
+#include<osg/ShapeDrawable>
+#include<osgEarthAnnotation/PlaceNode>
+
+/**************************************************************/
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 using namespace osgEarth::Util;
 
-
-/******************************************************************/
 osg::ref_ptr<osgViewer::Viewer> g_viewer;
 osg::MatrixTransform* g_mt_compass = new osg::MatrixTransform();
 
-cOSG::cOSG(HWND hWnd) :
+COSG::COSG(HWND hWnd) :
 	m_hWnd(hWnd),
 	label_event_(nullptr)
 {
+	m_vec3RibbonColor_.set(1.0f, 1.0f, 0.0f); // 设置彩带颜色为红色
 }
 
-cOSG::~cOSG()
+COSG::~COSG()
 {
 	mViewer->setDone(true);
 	Sleep(1000);
@@ -121,15 +134,18 @@ cOSG::~cOSG()
 	delete mViewer;
 }
 
-void cOSG::InitOSG(std::string modelname)
+void COSG::InitOSG(std::string modelname)
 {
 	// Store the name of the model to load
 	m_ModelName = modelname;
 
 	// Init different parts of OSG
 	InitManipulators();
+
 	InitSceneGraph();
+
 	InitCameraConfig();
+
 	g_viewer = getViewer();
 
 	// 创建星空
@@ -137,6 +153,9 @@ void cOSG::InitOSG(std::string modelname)
 
 	// 显示经纬度高度
 	AddViewPointLable();
+
+	// 添加帧率标签
+	AddFrameRateLabel();
 
 	// 添加飞机模型
 	AddAirPlane();
@@ -146,34 +165,22 @@ void cOSG::InitOSG(std::string modelname)
 	AddCompass();
 
 	// 创建飞机历史航迹
-	AddBuildHistoryRoute(mt_airfly_, 1.0f);
+	// AddBuildHistoryRoute(mt_airfly_, 1.0f);
 
 	// 创建飞机飞行彩带
-	// AddBuildRibbon(512, mt_airfly_,20.0f);
+	AddBuildRibbon(512.0f, mt_airfly_, 10.0f);
 
 	// 设置飞机视角跟随 接收 udp 数据，实时仿真
-	// RealTimeSimulation();
+	RealTimeSimulation();
 
 	// 在左上角添加经度度标签，鼠标移动时候显示  
 	// AddLonLatLabel();
-
+	
+	// 添加标注
 	AddAnnotation();
-
-	//定义视点类对象
-	/*osgEarth::Viewpoint vp;
-	//设置视点参数，focalPoint()函数返回的是一个点_point，然后调用set（）函数进行设置，第一个参数是空间参考参数，第二个是经度，第三个是纬度，第四个是Z值
-	//最后一个参数用来描述Z是怎么解释的，有两种，ALTMODE_ABSOLUTE是绝对高程，从椭球体（？）开始算的，ALTMODE_RELATIVE是相对高程，从地形的标高以上开始算的，就是基准点在那个经纬度对应的点的最高处
-	vp.focalPoint()->set(earth_map_node_->getMapSRS()->getGeographicSRS(), 112.36502062, 32.57574867, 0, osgEarth::ALTMODE_ABSOLUTE);
-	//设置相机相对于焦点的俯仰
-	vp.pitch() = -90.0;
-	//相机到focalPoint点的距离，也就是高度
-	vp.range() = 250000;*/
-	// earth_manipulator_->setViewpoint(osgEarth::Viewpoint("", 112.36502062, 32.57574867, -2.5f, -90.0, 0.0, 1000), 5);
-	// earth_manipulator_->setHomeViewpoint(vp, 5);
-
 }
 
-void cOSG::AddLonLatLabel()
+void COSG::AddLonLatLabel()
 {
 	osgEarth::Util::Formatter* formatter = 0L;
 	osgEarth::Util::GeodeticGraticule* gr = new osgEarth::Util::GeodeticGraticule();
@@ -204,21 +211,21 @@ void cOSG::AddLonLatLabel()
 }
 
 // 实时跟踪
-void cOSG::RealTimeSimulation(bool is_track)
+void COSG::RealTimeSimulation(bool is_track)
 {
 	osgEarth::Viewpoint vp = earth_manipulator_->getViewpoint();
-	if (is_track){
-		vp.setNode(mt_airfly_); //node_airfly_);mt_airfly_
-		vp.heading()->set(0/*24.261*/, osgEarth::Units::DEGREES);
-		vp.range()->set(3000.95, osgEarth::Units::METERS); // 350000.0
-		vp.pitch()->set(-9.701, osgEarth::Units::DEGREES);
-		earth_manipulator_->setViewpoint(vp, 5.0);
-	}else{
-		vp.setNode(0);
-	}	
+	//if (is_track){
+	vp.setNode(mt_airfly_); //node_airfly_);mt_airfly_
+	vp.heading()->set(-76.738, osgEarth::Units::DEGREES);
+	vp.range()->set(4774.368, osgEarth::Units::METERS); // 350000.0
+	vp.pitch()->set(-21.000, osgEarth::Units::DEGREES);
+	earth_manipulator_->setViewpoint(vp, 5.0);
+	//}else{
+	//	vp.setNode(0);
+	//}	
 }
 
-void cOSG::AddCompass()
+void COSG::AddCompass()
 {
 	// 添加指南针
 	osg::ref_ptr<Compass> compass = new Compass;
@@ -239,7 +246,7 @@ void cOSG::AddCompass()
 
 }
 
-void cOSG::InitManipulators(void)
+void COSG::InitManipulators(void)
 {
 	// Create a trackball manipulator
 	trackball = new osgGA::TrackballManipulator();
@@ -259,7 +266,7 @@ void cOSG::InitManipulators(void)
 }
 
 
-void cOSG::InitSceneGraph(void)
+void COSG::InitSceneGraph(void)
 {
 	// Init the main Root Node/Group
 	mRoot  = new osg::Group;
@@ -285,16 +292,13 @@ void cOSG::InitSceneGraph(void)
 
 }
 
-void cOSG::InitCameraConfig(void)
+void COSG::InitCameraConfig(void)
 {
 	// Local Variable to hold window size data
 	RECT rect;
 
 	// Create the viewer for this window
 	mViewer = new osgViewer::Viewer();
-
-	// Add a Stats Handler to the viewer
-	mViewer->addEventHandler(new osgViewer::StatsHandler);
 
 	// Get the current window size
 	::GetWindowRect(m_hWnd, &rect);
@@ -365,38 +369,56 @@ void cOSG::InitCameraConfig(void)
 
 	// Set the Scene Data
 	mViewer->setSceneData(mRoot.get());
-	osg::ref_ptr<osgText::Text> updateText = new osgText::Text;
-	mViewer->addEventHandler(new CPickHandler(updateText));
-	mViewer->addEventHandler(new osgViewer::WindowSizeHandler());//F键控制全/半屏
 
-	mViewer->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
+	//添加状态事件，可以相应键盘和鼠标事件，响应L T B W
+	mViewer->addEventHandler(new osgGA::StateSetManipulator(camera->getOrCreateStateSet()));
+	//窗口大小变化，响应F
+	mViewer->addEventHandler(new osgViewer::WindowSizeHandler);
+	//添加路径记录 Z
+	mViewer->addEventHandler(new osgViewer::RecordCameraPathHandler);
+	//帮助文档显示H
+	mViewer->addEventHandler(new osgViewer::HelpHandler);
+	//截屏 C
+	mViewer->addEventHandler(new osgViewer::ScreenCaptureHandler);
+	//添加一些常用状态设置，响应S
+	mViewer->addEventHandler(new osgViewer::StatsHandler);
+
+	mViewer->addEventHandler(new osgViewer::ThreadingHandler());
+
+	mViewer->addEventHandler(new osgViewer::LODScaleHandler());
+
+	// osg::ref_ptr<osgText::Text> updateText = ;
+	mViewer->addEventHandler(new CPickHandler(new osgText::Text));
+	mViewer->setThreadingModel(osgViewer::ViewerBase::CullThreadPerCameraDrawThreadPerContext);
+
+	//解决Lines or Annotations (FeatureNode, etc.) 不被渲染的问题
+	osgEarth::GLUtils::setGlobalDefaults(mViewer->getCamera()->getOrCreateStateSet());
 
 	// Realize the Viewer
 	mViewer->realize();
-
-	// Correct aspect ratio
-	/*double fovy,aspectRatio,z1,z2;
-	mViewer->getCamera()->getProjectionMatrixAsPerspective(fovy,aspectRatio,z1,z2);
-	aspectRatio=double(traits->width)/double(traits->height);
-	mViewer->getCamera()->setProjectionMatrixAsPerspective(fovy,aspectRatio,z1,z2);*/
 }
 
-void cOSG::PreFrameUpdate()
+void COSG::PreFrameUpdate()
 {
 	// Due any preframe updates in this routine
 }
 
-void cOSG::PostFrameUpdate()
+void COSG::PostFrameUpdate()
 {
 	// Due any postframe updates in this routine
 }
 
-
 // 创建星空
-int cOSG::CreateStarrySky(void)
+int COSG::CreateStarrySky(void)
 {
+	//CString str;
+	CTime tm;
+	tm = CTime::GetCurrentTime();
+	//str=tm.Format("现在时间是%Y年%m月%d日 %X");
+	//TRACE(str);
+
 	// 设置时间
-	osgEarth::DateTime dateTime(2022, 7, 17, 20);		//格林尼治时间
+	osgEarth::DateTime dateTime(tm.GetYear(), tm.GetMonth(), tm.GetDay(), tm.GetHour());		//格林尼治时间
 	osgEarth::Util::SkyOptions skyOptions;
 	skyOptions.ambient() = 0.4;//控制黑夜部分明暗程度，数值越小，越黑暗
 
@@ -414,7 +436,7 @@ int cOSG::CreateStarrySky(void)
 	return 0;
 }
 
-CRenderingThread::CRenderingThread( cOSG* ptr )
+CRenderingThread::CRenderingThread( COSG* ptr )
 	:   OpenThreads::Thread(), _ptr(ptr), _done(false)
 {
 }
@@ -476,7 +498,7 @@ void UpdateCompass::operator()(osg::Node* node, osg::NodeVisitor* nv)
 }
 
 // 添加标签控件，显示经纬度高度
-void cOSG::AddViewPointLable()
+void COSG::AddViewPointLable()
 {
 	if (mViewer==nullptr){
 		TRACE(TEXT("mViewer is null, at addViewPointLable!"));
@@ -493,6 +515,7 @@ void cOSG::AddViewPointLable()
 	mouse_coords->setHaloColor(osg::Vec4(1.0, 0.5, 0.0, 1));
 	mouse_coords->setHorizAlign(osgEarth::Util::Controls::Control::ALIGN_RIGHT);
 	mouse_coords->setVertAlign(osgEarth::Util::Controls::Control::ALIGN_BOTTOM);
+	canvas_->addControl(mouse_coords);
 
 	// mRoot->addChild(osgEarth::Util::Controls::ControlCanvas::get(mViewer));
 	// osgEarth::Util::Controls::ControlCanvas* canvas = osgEarth::Util::Controls::ControlCanvas::get(mViewer);
@@ -507,7 +530,7 @@ void cOSG::AddViewPointLable()
 	view_coods->setBackColor(osg::Vec4(0,0,0,0.5));
 	//view_coods->setSize(500,50);
 	view_coods->setMargin(10);
-
+	canvas_->addControl(view_coods);
 
 	// 添加控件，用来显示飞机信息
 	osgEarth::Util::Controls::LabelControl* fly_coords = new osgEarth::Util::Controls::LabelControl(TEXT("fly_point"), Color::White);
@@ -517,11 +540,8 @@ void cOSG::AddViewPointLable()
 	fly_coords->setHaloColor(osg::Vec4(1.0, 0.5, 0.0, 1));
 	fly_coords->setHorizAlign(osgEarth::Util::Controls::Control::ALIGN_RIGHT);
 	fly_coords->setVertAlign(osgEarth::Util::Controls::Control::ALIGN_TOP);
-
-
-	canvas_->addControl(mouse_coords);
-	canvas_->addControl(view_coods);
 	canvas_->addControl(fly_coords);
+
 
 	if (label_event_ == 0){
 		label_event_ = new CLabelControlEventHandler(earth_map_node_,mouse_coords,view_coods,fly_coords);
@@ -540,28 +560,7 @@ void cOSG::AddViewPointLable()
 
 }
 
-
-//void cOSG::OnRecv(const char* buf, USHORT len, const char* fromIp, USHORT fromPort){
-/*aircraftStatusData *dlc_data = (aircraftStatusData *)buf;
-TRACE("经度:%0.8f,维度:%0.8f,高度:%0.8f,\
-航向角:%0.8f,俯仰角:%0.8f,翻滚角:%0.8f,\
-迎角:%0.8f,侧滑角:%0.8f,空速:%0.8f\t,ip:%s,port:%d\n",\
-dlc_data->dbLong,dlc_data->dbLati,dlc_data->fHeight,\
-dlc_data->fPsi,dlc_data->fTheta,dlc_data->fGama,\
-dlc_data->fAlpha,dlc_data->fTheta,dlc_data->fVel,fromIp, fromPort);
-osg::Matrix matrix;
-coordinate_system_node_->getEllipsoidModel()->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(dlc_data->dbLati), osg::DegreesToRadians(dlc_data->dbLong), 5e5, matrix);
-matrix.preMult(osg::Matrix::scale(3e4, 3e4, 3e4)*osg::Matrix::rotate(osg::inDegrees(180.0), osg::Vec3(0, 0, 1)));
-xform_->setMatrix(matrix);
-//mViewer->frame();
-Sleep(20);*/
-//log_cur += 0.0001;
-//lat_cur += 0.00001;
-
-//earthManipulator->setViewpoint(osgEarth::Viewpoint("模拟无人机", log_cur, lat_cur, 0.0, 0.0, -90.0, 5e2));//const char* name, double lon, double lat, double z, double heading(水平角度), double pitch（垂直角度）, double range（视点距离）
-//}
-
-osg::MatrixTransform* cOSG::createCompassPart(const std::string &image, float radius, float height)
+osg::MatrixTransform* COSG::createCompassPart(const std::string &image, float radius, float height)
 {
 	osg::Vec3 center(-radius, -radius, height);
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
@@ -578,57 +577,8 @@ osg::MatrixTransform* cOSG::createCompassPart(const std::string &image, float ra
 	return part.release();
 }
 
-int cOSG::AddAirPlane(void)
+int COSG::AddAirPlane(void)
 {
-	//if (0){
-	//	coordinate_system_node_ = new osg::CoordinateSystemNode; // 创建坐标系节点
-	//	coordinate_system_node_->setEllipsoidModel(new osg::EllipsoidModel()); // 设置椭圆体模型
-
-	//	// 加载机场
-	//	airport_ = osgDB::readNodeFile("C:/track_data/airport/heinei_airport.ive"); // 读取机场文件
-	//	mtAirport_ = new osg::MatrixTransform; // 矩阵变换
-	//	mtAirport_->addChild(airport_);
-	//	mRoot->addChild(mtAirport_);
-
-	//	// 设置机场矩阵
-	//	osg::Matrixd mtTemp;   // 机场位置  109.13 34.38 高度：8434.96  海拔：390
-	//	coordinate_system_node_->getEllipsoidModel()->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(34.3762), osg::DegreesToRadians(109.1263), 460, mtTemp);
-	//	mtAirport_->setMatrix(mtTemp);
-
-	//	// 加载飞机
-	//	osg::Matrixd::value_type plane_angle = osg::PI_4f*1.6554;  //正值： 逆时针  
-
-	//	node_airfly_ = osgDB::readNodeFile("c:/track_data/aircrafts/F-16.ive"); // 读取飞机文件
-	//	node_airfly_->setName(TEXT("F16"));
-	//	airfly_mt_ = new osg::MatrixTransform();
-	//	airfly_mt_->setDataVariance(osg::Object::STATIC);
-	//	airfly_mt_->setMatrix(osg::Matrix::scale(10,10,10)
-	//		* osg::Matrixd::rotate(osg::DegreesToRadians(75.0f), osg::Vec3(0,0,1))
-	//		// * osg::Matrix::translate(osg::Vec3f(0, 0, 0))
-	//		); // -(osg::PI_2/2*10)
-
-	//	airfly_mt_->getOrCreateStateSet()->setMode(GL_RESCALE_NORMAL,osg::StateAttribute::ON);// 设置属性，光照法线
-	//	airfly_mt_->addChild(node_airfly_);
-
-	//	// airfly_positioned_->addChild(m_pBuildRader.BuildRader(50,30).get());
-
-
-	//	// mtrix_fly_self->addChild(m_pBuildRader->BuildRader(500,300).get());
-	//	xform_ = new osg::MatrixTransform();
-	//	xform_->addChild(airfly_mt_);
-
-	//	mRoot->addChild(xform_);
-
-
-	//	// 设置飞机矩阵
-	//	coordinate_system_node_->getEllipsoidModel()->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(34.376128), osg::DegreesToRadians(109.125682), 537, mtTemp);
-	//	xform_->setMatrix(mtTemp);
-
-
-	//	// xform_->addUpdateCallback(new ModelPositionCallback(100.0f));
-	//}
-
-
 	//模型1
 	node_airfly_ = osgDB::readNodeFile("c:/track_data/aircrafts/F-16.ive");
 	
@@ -639,18 +589,28 @@ int cOSG::AddAirPlane(void)
 	mt_airfly_->addChild(node_airfly_);
 	mt_airfly_->setName(_T("歼16"));
 
-	mt_airfly_->addChild(m_pBuildRader.BuildRader(500,300).get());
-
+	mt_airfly_->addChild(m_pBuildRader.BuildRader(50,50).get());
+	mt_airfly_->setUpdateCallback(new ModelPositionCallback());
 	mt_airfly_->setDataVariance(osg::Object::STATIC);
 	mt_airfly_->setMatrix(osg::Matrix::scale(1,1,1)*osg::Matrixd::rotate(osg::DegreesToRadians(0.0f), osg::Vec3(0,0,1)));
 	mRoot->addChild(mt_airfly_);
+
+
+	//在山顶放一个坦克
+	osg::ref_ptr<osg::Node>tank = osgDB::readNodeFile("tank.flt.170,170,170.scale");
+	osg::MatrixTransform* tankMT = new osg::MatrixTransform;
+	osg::Matrix mt;
+	earth_map_node_->getMapSRS()->getGeographicSRS()->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(46.2054), osg::DegreesToRadians(-121.488), 2030.11,mt);
+	tankMT->setMatrix(mt);
+	tankMT->addChild(tank);
+	mRoot->addChild(tankMT);
 
 	return 0;
 }
 
 
 // 飞机起飞
-void cOSG::DoPreLineNow()
+void COSG::DoPreLineNow()
 {
 
 	/*ModelPositionCallback* nc = new ModelPositionCallback(100.0f);
@@ -683,7 +643,7 @@ void cOSG::DoPreLineNow()
 
 
 
-int cOSG::AddAnnotation(void)
+int COSG::AddAnnotation(void)
 { 
 	osg::Group* annoGroup = new osg::Group();
 	mRoot->addChild( annoGroup );
@@ -832,7 +792,7 @@ int cOSG::AddAnnotation(void)
 		pathNode = new FeatureNode(pathFeature, pathStyle);
 		annoGroup->addChild( pathNode );
 
-		//labelGroup->addChild( new LabelNode(mapNode, GeoPoint(geoSRS,112.705, 37.095), "Great circle path", labelStyle) );
+		labelGroup->addChild( new LabelNode(GeoPoint(geoSRS,112.705, 37.095), "Great circle path", labelStyle) );
 	}
 
 	//--------------------------------------------------------------------
@@ -895,17 +855,15 @@ int cOSG::AddAnnotation(void)
 		circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Orange, 0.75);
 		circleStyle.getOrCreate<ExtrusionSymbol>()->height() = 25000.0; // meters MSL
 		osgEarth::Annotation::CircleNode* circle = new osgEarth::Annotation::CircleNode();
-		ellipse->set(
+		circle->set(
 			GeoPoint(geoSRS, 102.72, 25.05, 0.0, ALTMODE_RELATIVE),
 			Distance(250, Units::MILES),
-			Distance(100, Units::MILES),
-			Angle   (0, Units::DEGREES),
 			circleStyle,
 			Angle(45.0, Units::DEGREES),
 			Angle(360.0 - 45.0, Units::DEGREES)
 			);
-		//annoGroup->addChild(circle);
-		//editGroup->addChild(new CircleNodeEditor(circle));
+		annoGroup->addChild(circle);
+		editGroup->addChild(new CircleNodeEditor(circle));
 	}
 	{
 		Style ellipseStyle;
@@ -988,7 +946,7 @@ int cOSG::AddAnnotation(void)
 
 
 // 创建飞机历史航迹
-void cOSG::AddBuildHistoryRoute(osg::MatrixTransform* scaler, float lineWidth)
+void COSG::AddBuildHistoryRoute(osg::MatrixTransform* scaler, float lineWidth)
 {
 	osg::ref_ptr<osg::Group> rpgroup = new osg::Group;
 	scaler->addUpdateCallback(new CreateTrackCallback(rpgroup,scaler,lineWidth));
@@ -998,7 +956,7 @@ void cOSG::AddBuildHistoryRoute(osg::MatrixTransform* scaler, float lineWidth)
 
 
 // 创建飞机飞行彩带
-void cOSG::AddBuildRibbon(int size, osg::MatrixTransform* scaler, int ribbonWidth)
+void COSG::AddBuildRibbon(int size, osg::MatrixTransform* scaler, int ribbonWidth)
 {
 	osg::ref_ptr<osg::Geometry> rpgeom = new osg::Geometry;
 	//设置顶点
@@ -1044,30 +1002,353 @@ void cOSG::AddBuildRibbon(int size, osg::MatrixTransform* scaler, int ribbonWidt
 }
 
 
-// 添加显示视点信息的控件
-//void cOSG::AddViewPointLabel(void)
-//{
-//	
-//}
-
-
-int cOSG::createControls(void)
+int COSG::createControls(void)
 {
 
 	return 0;
 }
 
 
-int cOSG::FlyTo(double longitude, double latitude, double altitude, double height, double heading, double pitch, double range)
+int COSG::FlyTo(double longitude, double latitude, double altitude, double height, double heading, double pitch, double range)
 {
 	earth_manipulator_->setViewpoint(osgEarth::Viewpoint(_T(""), longitude, latitude, altitude, -60, -45, 1000), 2);
 	return 0;
 }
 
 
-int cOSG::StartFly(void)
+int COSG::StartFly(void)
 {	
-	mt_airfly_->setUpdateCallback(new ModelPositionCallback());
+	
+	return 0;
+}
+
+GetFrameRate::GetFrameRate(osgEarth::Util::LabelControl* fpsLabelContral):fpsLabel(fpsLabelContral)
+{
+	curFrameNum = 0;
+	curTime = 0;
+	nextFrameNum = 0;
+	nextTime = 0;
+	fps = 0;
+}
+
+bool GetFrameRate::handle(const osgGA::GUIEventAdapter&ea, osgGA::GUIActionAdapter&aa)
+{
+	osgViewer::Viewer *viewer = dynamic_cast<osgViewer::Viewer*>(&aa);
+	//获取帧率
+	osg::FrameStamp* FS = viewer->getViewerFrameStamp();
+	curFrameNum = FS->getFrameNumber();
+	curTime = FS->getSimulationTime();
+	if ((curTime - nextTime)<=0.005){
+		// todo
+	}else{ 
+		fps = 1 / ((curTime - nextTime)); 
+		char wsrc[512];
+		sprintf(wsrc, "%.2f", fps);
+		fpsLabel->setText(wsrc);
+		std::cout << fps << std::endl;
+	}
+
+	nextFrameNum = FS->getFrameNumber();
+	nextTime = FS->getSimulationTime();
+	return false;
+}
+
+
+// 添加帧率标签
+int COSG::AddFrameRateLabel(void)
+{
+	//contralLable显示信息
+	osgEarth::Util::Grid* grid = new osgEarth::Util::Grid();
+	//设置几个Label文字控件显示在场景中
+	grid->setControl(0, 0, new osgEarth::Util::LabelControl("FPS:  "));
+	osgEarth::Util::LabelControl* fpsLabelContral = grid->setControl(1, 0, new osgEarth::Util::LabelControl("60.0"));
+	grid->setPosition(10, 30);
+
+	//控件绘制容器
+	osgEarth::Util::ControlCanvas* fpsCanvas = new osgEarth::Util::ControlCanvas();
+	//将要显示的控件加入到root组节点中去
+	mRoot->addChild(fpsCanvas);
+	fpsCanvas->addControl(grid);
+	fpsCanvas->setNodeMask(1);
+
+
+	//获取帧率
+	mViewer->addEventHandler(new GetFrameRate(fpsLabelContral));
 
 	return 0;
+}
+
+
+// 显示多维态势
+int COSG::DisplaySituation(void)
+{
+
+	osg::Group* losGroup = new osg::Group();
+	losGroup->getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+	losGroup->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::ALWAYS, 0, 1, false));
+	mRoot->addChild(losGroup);
+
+	// so we can speak lat/long:
+	//世界坐标和经纬坐标SRS
+	const SpatialReference* mapSRS = earth_map_node_->getMapSRS();
+	const SpatialReference* geoSRS = mapSRS->getGeographicSRS();
+
+	//Create a point to point LineOfSightNode.
+	//第一根线
+	LinearLineOfSightNode* los = new LinearLineOfSightNode(
+		earth_map_node_,
+		GeoPoint(geoSRS, -121.665, 46.0878, 1258.00, ALTMODE_ABSOLUTE),
+		GeoPoint(geoSRS, -121.488, 46.2054, 3620.11, ALTMODE_ABSOLUTE) );
+	osg::ref_ptr<osg::LineWidth>Lw2 = new osg::LineWidth(3);
+	los->getOrCreateStateSet()->setAttribute(Lw2, osg::StateAttribute::ON);
+	los->setGoodColor(osg::Vec4(0,0,1,1));
+	losGroup->addChild( los );
+	//Create an editor for the point to point line of sight that allows you to drag the beginning and end points around.
+	//This is just one way that you could manipulator the LineOfSightNode.
+	//设置线顶点可编辑
+	LinearLineOfSightEditor* p2peditor = new LinearLineOfSightEditor( los );
+	mRoot->addChild( p2peditor );
+
+	//Create a relative point to point LineOfSightNode.
+	//第二根线  两点之间生成一条线
+	LinearLineOfSightNode* relativeLOS = new LinearLineOfSightNode( 
+		earth_map_node_,
+		GeoPoint(geoSRS, -121.2, 46.1, 10, ALTMODE_RELATIVE),//最后一个参数相对高度为10
+		GeoPoint(geoSRS, -121.488, 46.2054, 10, ALTMODE_RELATIVE) );
+	osg::ref_ptr<osg::LineWidth>Lw3 = new osg::LineWidth(3);
+	relativeLOS->getOrCreateStateSet()->setAttribute(Lw3, osg::StateAttribute::ON);
+	relativeLOS->setGoodColor(osg::Vec4(0, 1, 1, 1));
+	losGroup->addChild( relativeLOS );
+	//设置两条线为可编辑状态
+	LinearLineOfSightEditor* relEditor = new LinearLineOfSightEditor( relativeLOS );
+	mRoot->addChild( relEditor );
+
+
+	//在山顶放一个坦克
+	osg::ref_ptr<osg::Node>tank = osgDB::readNodeFile("tank.flt.170,170,170.scale");
+	osg::MatrixTransform* tankMT = new osg::MatrixTransform;
+	osg::Matrix mt;
+	geoSRS->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(46.2054), osg::DegreesToRadians(-121.488), 3430.11,mt);
+	tankMT->setMatrix(mt);
+	tankMT->addChild(tank);
+	mRoot->addChild(tankMT);
+
+
+
+	//Create a RadialLineOfSightNode that allows you to do a 360 degree line of sight analysis.
+	//第一个扇形区域
+	RadialLineOfSightNode* radial = new RadialLineOfSightNode( earth_map_node_ );
+	radial->setCenter( GeoPoint(geoSRS, -121.515, 46.054, 847.604, ALTMODE_ABSOLUTE) );
+	radial->setRadius( 2000 );
+	radial->setNumSpokes( 100 );    
+	losGroup->addChild( radial );
+	//设置扇形可编辑
+	RadialLineOfSightEditor* radialEditor = new RadialLineOfSightEditor( radial );
+	losGroup->addChild( radialEditor );
+
+	//第二个扇形区域
+	//Create a relative RadialLineOfSightNode that allows you to do a 360 degree line of sight analysis.
+	RadialLineOfSightNode* radialRelative = new RadialLineOfSightNode( earth_map_node_ );
+	radialRelative->setCenter( GeoPoint(geoSRS, -121.2, 46.054, 10, ALTMODE_RELATIVE) );
+	radialRelative->setRadius( 3000 );
+	radialRelative->setNumSpokes(60);    
+	losGroup->addChild( radialRelative );
+	//设置扇形可编辑
+	RadialLineOfSightEditor* radialRelEditor = new RadialLineOfSightEditor( radialRelative );
+	losGroup->addChild( radialRelEditor );
+
+
+	//Load a plane model.  
+	osg::ref_ptr< osg::Node >  plane = osgDB::readNodeFile("cessna.osgb.50,50,50.scale");//name.x,y,z.scale   猜测是点乘比例   name.x,y,z.trans  平移
+	//Create 2 moving planes
+	osg::Node* plane1 = CreatePlane(plane, GeoPoint(geoSRS, -121.656, 46.0935, 9133.06, ALTMODE_ABSOLUTE), mapSRS, 50000, 5); //半径 时间
+	osg::Node* plane2 = CreatePlane(plane, GeoPoint(geoSRS, -121.321, 46.2587, 6390.09, ALTMODE_ABSOLUTE), mapSRS, 30000, 5);
+	mRoot->addChild( plane1 );
+	mRoot->addChild( plane2 );
+
+	//Create another plane and attach a RadialLineOfSightNode to it using the RadialLineOfSightTether
+	osg::Node* plane3 = CreatePlane(plane, GeoPoint(geoSRS, -121.463, 46.3548, 3348.71, ALTMODE_ABSOLUTE), mapSRS, 10000, 5);
+	plane3->getOrCreateStateSet()->setMode(GL_RESCALE_NORMAL, osg::StateAttribute::ON);
+	losGroup->addChild(plane3);
+
+
+	{
+		//Create a LineOfSightNode that will use a LineOfSightTether callback to monitor
+		//the two plane's positions and recompute the LOS when they move
+		//第一个和第二个飞机之间生成跟踪线
+		LinearLineOfSightNode* tetheredLOS = new LinearLineOfSightNode(earth_map_node_);
+		//设置跟踪线颜色
+		tetheredLOS->setGoodColor(osg::Vec4(0, 1, 0, 1));
+		//设置线宽
+		osg::ref_ptr<osg::LineWidth>Lw = new osg::LineWidth(3.0);
+		tetheredLOS->getOrCreateStateSet()->setAttribute(Lw, osg::StateAttribute::ON);
+
+		losGroup->addChild(tetheredLOS);
+		tetheredLOS->setUpdateCallback(new LineOfSightTether(plane1, plane2));
+
+
+		//第2和3架飞机之间的连接线
+		LinearLineOfSightNode* tetheredLOS2 = new LinearLineOfSightNode(earth_map_node_);
+		//设置跟踪线颜色
+		tetheredLOS2->setGoodColor(osg::Vec4(1, 0, 0, 1));  //红色
+		//设置线宽
+		osg::ref_ptr<osg::LineWidth>Lw4 = new osg::LineWidth(3.0);
+		tetheredLOS2->getOrCreateStateSet()->setAttribute(Lw4, osg::StateAttribute::ON);
+		//不知道实际作用
+		//tetheredLOS2->setBadColor(osg::Vec4(1, 0, 0, 1));
+		losGroup->addChild(tetheredLOS2);
+		tetheredLOS2->setUpdateCallback(new LineOfSightTether(plane2, plane3));
+
+
+		//第1架飞机和坦克之间的连接线
+		LinearLineOfSightNode* tetheredLOS3 = new LinearLineOfSightNode(earth_map_node_);
+		//设置跟踪线颜色
+		tetheredLOS3->setGoodColor(osg::Vec4(1, 0, 0, 1));  //红色
+		tetheredLOS3->getOrCreateStateSet()->setAttribute(Lw4, osg::StateAttribute::ON);
+		losGroup->addChild(tetheredLOS3);
+		tetheredLOS3->setUpdateCallback(new LineOfSightTether(plane1, tank));
+	}
+
+
+	{
+		//坦克周围的包围扇形
+		RadialLineOfSightNode* tetheredRadia = new RadialLineOfSightNode(earth_map_node_);
+		tetheredRadia->setRadius(5000);
+		tetheredRadia->setFill(true);
+		//若只有GoodColor，则整个区域填充此颜色
+		tetheredRadia->setGoodColor(osg::Vec4(1, 0, 0, 0.3));
+		tetheredRadia->setNumSpokes(100);
+		losGroup->addChild(tetheredRadia);
+		tetheredRadia->setUpdateCallback(new RadialLineOfSightTether(tank));
+
+		//飞机1周围的包围扇形
+		RadialLineOfSightNode* tetheredRadia2 = new RadialLineOfSightNode(earth_map_node_);
+		tetheredRadia2->setRadius(5000);
+		tetheredRadia2->setFill(true);
+		//若只有GoodColor，则整个区域填充此颜色
+		tetheredRadia2->setGoodColor(osg::Vec4(0, 1, 0, 0.3));
+		tetheredRadia2->setNumSpokes(100);
+		losGroup->addChild(tetheredRadia2);
+		tetheredRadia2->setUpdateCallback(new RadialLineOfSightTether(plane1));
+
+		//飞机2周围的包围扇形
+		RadialLineOfSightNode* tetheredRadia3 = new RadialLineOfSightNode(earth_map_node_);
+		tetheredRadia3->setRadius(5000);
+		tetheredRadia3->setFill(true);
+		//若只有GoodColor，则整个区域填充此颜色
+		tetheredRadia3->setGoodColor(osg::Vec4(0, 1, 0, 0.3));
+		tetheredRadia3->setNumSpokes(100);
+		losGroup->addChild(tetheredRadia3);
+		tetheredRadia3->setUpdateCallback(new RadialLineOfSightTether(plane2));
+
+		//飞机3周围的包围扇形
+		RadialLineOfSightNode* tetheredRadia4 = new RadialLineOfSightNode(earth_map_node_);
+		tetheredRadia4->setRadius(5000);
+		//This RadialLineOfSightNode is going to be filled, so set some alpha values for the colors so it's partially transparent
+		tetheredRadia4->setFill(true);
+		//若只有GoodColor，则整个区域填充此颜色
+		tetheredRadia4->setGoodColor(osg::Vec4(1, 0, 0, 0.3));
+		//BadColor好像没啥影响
+		//后面参数为多边形外接切线，参数越大越接近圆，参数越小则退化为正多边形
+		tetheredRadia4->setNumSpokes(100);
+		losGroup->addChild(tetheredRadia4);
+		//设置包围圈跟踪飞机模型
+		tetheredRadia4->setUpdateCallback(new RadialLineOfSightTether(plane3));
+
+		//包围球
+		osg::ref_ptr<osg::Geode> gnode = new osg::Geode;
+		osg::BoundingSphere bs = plane3->getBound();
+		osg::ref_ptr<osg::ShapeDrawable> sd = new osg::ShapeDrawable(new osg::Sphere(bs.center(),bs.radius()+300));
+		sd->setColor(osg::Vec4(1,0,0,0.2));
+		gnode->addChild(sd);
+		osg::MatrixTransform* plane3MT = dynamic_cast<osg::MatrixTransform*>(plane3);
+		plane3MT->addChild(gnode);
+		gnode->getOrCreateStateSet()->setMode(GL_BLEND,osg::StateAttribute::ON|osg::StateSet::TRANSPARENT_BIN);
+		gnode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+
+		//添加标识
+		osgEarth::Style style;
+		osgEarth::Annotation::PlaceNode *pn = new osgEarth::Annotation::PlaceNode(osgEarth::GeoPoint(geoSRS, -121.488, 46.2054, 0, ALTMODE_RELATIVE), "Tank", style);
+
+		mRoot->addChild(pn);
+
+	}
+
+
+	//设置初始视点
+	osgEarth::Viewpoint vp;
+	vp.name() = "Mt Ranier";
+	vp.focalPoint()->set(geoSRS, -121.488, 46.2054, 0, ALTMODE_ABSOLUTE);
+	vp.pitch() = -50.0;
+	vp.range() = 100000;
+	earth_manipulator_->setHomeViewpoint( vp );
+
+
+	return 0;
+}
+
+
+osg::ref_ptr<osg::Node> COSG::CreatePlane(osg::Node* node, const GeoPoint& pos, const SpatialReference* mapSRS, double radius, double time)
+{
+	osg::MatrixTransform* positioner = new osg::MatrixTransform;
+	positioner->addChild( node );
+	osg::AnimationPath* animationPath = CreateAnimationPath(pos, mapSRS, radius, time);
+	positioner->setUpdateCallback( new osg::AnimationPathCallback(animationPath, 0.0, 1.0));
+	return positioner;
+}
+
+
+osg::ref_ptr<osg::AnimationPath> COSG::CreateAnimationPath(const GeoPoint& pos, const SpatialReference* mapSRS, float radius, double looptime)
+{
+	// set up the animation path 
+	osg::AnimationPath* animationPath = new osg::AnimationPath;
+	animationPath->setLoopMode(osg::AnimationPath::LOOP);
+
+	int numSamples = 40;
+
+	double delta = osg::PI * 2.0 / (double)numSamples;
+
+	//Get the center point in geocentric
+	GeoPoint mapPos = pos.transform(mapSRS);
+	osg::Vec3d centerWorld;
+	mapPos.toWorld( centerWorld );
+
+	bool isProjected = mapSRS->isProjected();
+
+	osg::Vec3d up = isProjected ? osg::Vec3d(0,0,1) : centerWorld;
+	up.normalize();
+
+	//Get the "side" vector
+	osg::Vec3d side = isProjected ? osg::Vec3d(1,0,0) : up ^ osg::Vec3d(0,0,1);
+
+
+	double time=0.0f;
+	double time_delta = looptime/(double)numSamples;
+
+	osg::Vec3d firstPosition;
+	osg::Quat firstRotation;
+
+	for (unsigned int i = 0; i < (unsigned int)numSamples; i++)
+	{
+		double angle = delta * (double)i;
+		osg::Quat quat(angle, up );
+		osg::Vec3d spoke = quat * (side * radius);
+		osg::Vec3d end = centerWorld + spoke;                
+
+		osg::Quat makeUp;
+		makeUp.makeRotate(osg::Vec3d(0,0,1), up);
+
+		osg::Quat rot = makeUp;
+		animationPath->insert(time,osg::AnimationPath::ControlPoint(end,rot));
+		if (i == 0)
+		{
+			firstPosition = end;
+			firstRotation = rot;
+		}
+		time += time_delta;            
+	}
+
+	animationPath->insert(time, osg::AnimationPath::ControlPoint(firstPosition, firstRotation));
+
+	return animationPath;    
 }

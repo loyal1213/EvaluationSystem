@@ -47,7 +47,7 @@ public:
 #endif
 
 protected:
-	cOSG* mOSG;
+	COSG* mOSG;
 	//HANDLE mThreadHandle;
 	CRenderingThread* mThreadHandle;
 
@@ -80,6 +80,8 @@ public:
 	afx_msg void OnUpdateEditRange(CCmdUI *pCmdUI);
 	// 飞机开始起飞
 	int StartTakeOff(void);
+	afx_msg void OnBtnTakeoff();
+	afx_msg void OnBtnSituation();
 };
 
 #ifndef _DEBUG  // EvaluationSystemView.cpp 中的调试版本
