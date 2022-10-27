@@ -75,6 +75,7 @@ private:
 	float					_heading;
 	double                  _speed;
 	osg::ref_ptr<osg::CoordinateSystemNode> csn_;
+	CUdpClient* p_udp_client_;
 };
 
 class FindNamedNodeVisitor : public osg::NodeVisitor

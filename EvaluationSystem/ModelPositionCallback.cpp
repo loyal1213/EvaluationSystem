@@ -9,14 +9,15 @@ ModelPositionCallback::ModelPositionCallback():
 	_height(35.0f), // 对于飞机的飞行高度和速度,都是有相关规定的,一般来讲从600米开始到8400米为止
 	_speed(400.0f), // 一般而言，民航飞机的巡航速度在800-900公里/小时左右，最大可以到1000公里，着陆时的时速在230公里左右
 	_heading(0.0),
-	csn_(0)
+	csn_(0),
+	p_udp_client_(nullptr)
 {	
 	csn_ = new osg::CoordinateSystemNode; // 创建坐标系节点
 	csn_->setEllipsoidModel(new osg::EllipsoidModel()); // 设置椭圆体模型
 
 	// todo
-	CUdpClient *p_udp_client = new CUdpClient(this);
-	p_udp_client->Start(3000);
+	p_udp_client_ = new CUdpClient(this);
+	p_udp_client_->Start(3000);
 	// _rotation.makeRotate(osg::DegreesToRadians(90.0),0.0,0.0,1.0);
 }
 
@@ -62,7 +63,6 @@ void ModelPositionCallback::OnRecv(const char* buf, USHORT len, const char* from
 		_speed = dlc_data->fVel;
 		_heading = dlc_data->fPsi;*/
 	}
-
 	// osg::Quat               _rotation;
 	//double                  _speed;
 	// earth_manipulator_->setViewpoint(osgEarth::Viewpoint("view_point5", dlc_data->dbLong, dlc_data->dbLati, 4000, -60, -90, 1000), 1.0);
@@ -70,6 +70,10 @@ void ModelPositionCallback::OnRecv(const char* buf, USHORT len, const char* from
 
 ModelPositionCallback::~ModelPositionCallback(void)
 {
+	if (p_udp_client_!=nullptr){
+		delete p_udp_client_;
+		p_udp_client_ = nullptr;
+	}
 }
 
 

@@ -27,10 +27,6 @@ IMPLEMENT_DYNCREATE(CMainFrame, CFrameWndEx)
 
 BEGIN_MESSAGE_MAP(CMainFrame, CFrameWndEx)
 	ON_WM_CREATE()
-	ON_COMMAND(ID_FILE_PRINT, &CMainFrame::OnFilePrint)
-	ON_COMMAND(ID_FILE_PRINT_DIRECT, &CMainFrame::OnFilePrint)
-	ON_COMMAND(ID_FILE_PRINT_PREVIEW, &CMainFrame::OnFilePrintPreview)
-	ON_UPDATE_COMMAND_UI(ID_FILE_PRINT_PREVIEW, &CMainFrame::OnUpdateFilePrintPreview)
 	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
@@ -54,9 +50,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 	m_wndRibbonBar.Create(this);
 	m_wndRibbonBar.LoadFromResource(IDR_RIBBON);
-
-	if (!m_wndStatusBar.Create(this))
-	{
+	if (!m_wndStatusBar.Create(this)){
 		TRACE0("未能创建状态栏\n");
 		return -1;      // 未能创建
 	}
@@ -74,11 +68,10 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	//设置定时器，每秒执行一次
 	this->SetTimer(1,1000,NULL);
 
-
 	// 启用 Visual Studio 2005 样式停靠窗口行为
-	CDockingManager::SetDockingMode(DT_SMART);
+	/*CDockingManager::SetDockingMode(DT_SMART);
 	// 启用 Visual Studio 2005 样式停靠窗口自动隐藏行为
-	EnableAutoHidePanes(CBRS_ALIGN_ANY);
+	EnableAutoHidePanes(CBRS_ALIGN_ANY);*/
 
 	return 0;
 }
@@ -89,6 +82,13 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 		return FALSE;
 	// TODO: 在此处通过修改
 	//  CREATESTRUCT cs 来修改窗口类或样式
+	cs.style &=~WS_MAXIMIZEBOX;//禁用最大化按钮
+	cs.style &=~WS_SIZEBOX;
+	cs.style &=~FWS_ADDTOTITLE;
+
+	cs.lpszName = _T("三维讲评系统");
+	cs.cx = 970;
+	cs.cy = 650;
 
 	return TRUE;
 }
@@ -107,29 +107,6 @@ void CMainFrame::Dump(CDumpContext& dc) const
 }
 #endif //_DEBUG
 
-
-// CMainFrame 消息处理程序
-
-void CMainFrame::OnFilePrint()
-{
-	if (IsPrintPreview())
-	{
-		PostMessage(WM_COMMAND, AFX_ID_PREVIEW_PRINT);
-	}
-}
-
-void CMainFrame::OnFilePrintPreview()
-{
-	if (IsPrintPreview())
-	{
-		PostMessage(WM_COMMAND, AFX_ID_PREVIEW_CLOSE);  // 强制关闭“打印预览”模式
-	}
-}
-
-void CMainFrame::OnUpdateFilePrintPreview(CCmdUI* pCmdUI)
-{
-	pCmdUI->SetCheck(IsPrintPreview());
-}
 
 
 void CMainFrame::OnTimer(UINT_PTR nIDEvent)

@@ -144,7 +144,7 @@ void COSG::InitOSG(std::string modelname)
 	// Init different parts of OSG
 	if (!InitSceneGraph()){
 		AfxMessageBox("读取earth文件失败, 请确认配置路径是否正确, 即将退出程序 !", MB_OK, MB_ICONWARNING);
-		ExitProcess(0);
+		//ExitProcess(0);
 	}
 
 	InitCameraConfig();

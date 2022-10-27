@@ -83,8 +83,7 @@ BOOL CEvaluationSystemApp::InitInstance()
 
 
 	// ≥ı ºªØ OLE ø‚
-	if (!AfxOleInit())
-	{
+	if (!AfxOleInit()){
 		AfxMessageBox(IDP_OLE_INIT_FAILED);
 		return FALSE;
 	}

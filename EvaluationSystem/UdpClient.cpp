@@ -30,8 +30,7 @@ static DWORD WINAPI ThreadFunc(LPVOID param)
 
 void CThread::Start()
 {
-	if (m_hThread == NULL)
-	{
+	if (m_hThread == NULL){
 		DWORD dwThreadID = 0;
 		m_hThread = ::CreateThread(NULL, 0, ThreadFunc, this, 0, &dwThreadID);
 	}
@@ -123,8 +122,13 @@ void CUdpClient::Stop()
 	closesocket(m_sock);
 	m_sock = INVALID_SOCKET;
 	m_running = FALSE;
-	m_thread->WaitFinish();
-	delete m_thread;
+	
+	if (m_thread!=nullptr){
+		m_thread->WaitFinish();
+		delete m_thread;
+		m_thread = nullptr;
+	}
+	
 	WSACleanup();
 }
 
@@ -162,15 +166,14 @@ void CUdpClient::Run()
 		sockaddr_in senderAddr;
 		int senderAddrSize = sizeof(senderAddr);
 		int result = recvfrom(m_sock, s_recvBuf, bufLen, 0, (SOCKADDR *)& senderAddr, &senderAddrSize);
-		if (result < 0) 
-		{
+		if (result < 0) {
 			TRACE(_T("recvfrom failed with error %d\n"), WSAGetLastError());
 			continue;
 		}
 		char *fromip = inet_ntoa(senderAddr.sin_addr);
-		if (m_recvCallback != nullptr)
-		{
+		if (m_recvCallback != nullptr){
 			m_recvCallback->OnRecv(s_recvBuf, result, fromip, senderAddr.sin_port);
 		}
+		Sleep(50);
 	}
 }
