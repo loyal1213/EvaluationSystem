@@ -63,6 +63,7 @@ void ModelPositionCallback::OnRecv(const char* buf, USHORT len, const char* from
 		_speed = dlc_data->fVel;
 		_heading = dlc_data->fPsi;*/
 	}
+	Sleep(50);
 	// osg::Quat               _rotation;
 	//double                  _speed;
 	// earth_manipulator_->setViewpoint(osgEarth::Viewpoint("view_point5", dlc_data->dbLong, dlc_data->dbLati, 4000, -60, -90, 1000), 1.0);

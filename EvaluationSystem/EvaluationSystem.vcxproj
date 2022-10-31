@@ -110,6 +110,8 @@
     <None Include="res\EvaluationSystemDoc.ico" />
     <None Include="res\filelarge.bmp" />
     <None Include="res\filesmall.bmp" />
+    <None Include="res\icon.png" />
+    <None Include="res\icon1.ico" />
     <None Include="res\main.bmp" />
     <None Include="res\ribbon.mfcribbon-ms" />
     <None Include="res\Toolbar.bmp" />

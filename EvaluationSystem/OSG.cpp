@@ -105,9 +105,10 @@
 #include <osg/io_utils>
 #include <osg/MatrixTransform>
 #include <osg/Depth>
-#include<osg/LineWidth>
-#include<osg/ShapeDrawable>
-#include<osgEarthAnnotation/PlaceNode>
+#include <osg/LineWidth>
+#include <osg/ShapeDrawable>
+#include <osgEarthAnnotation/PlaceNode>
+#include <osgEarthSymbology/GeometryFactory>
 
 /**************************************************************/
 using namespace osgEarth;
@@ -119,7 +120,7 @@ osg::ref_ptr<osgViewer::Viewer> g_viewer;
 osg::MatrixTransform* g_mt_compass = new osg::MatrixTransform();
 
 COSG::COSG(HWND hWnd) :
-	m_hWnd(hWnd),
+m_hWnd(hWnd),
 	label_event_(nullptr)
 {
 	m_vec3RibbonColor_.set(1.0f, 0.0f, 0.0f); // 设置彩带颜色为红色
@@ -151,6 +152,7 @@ void COSG::InitOSG(std::string modelname)
 
 	g_viewer = getViewer();
 
+	
 	// 创建星空
 	CreateStarrySky();
 
@@ -178,9 +180,10 @@ void COSG::InitOSG(std::string modelname)
 
 	// 在左上角添加经度度标签，鼠标移动时候显示  
 	// AddLonLatLabel();
-	
+
 	// 添加标注
 	AddAnnotation();
+
 }
 
 void COSG::AddLonLatLabel()
@@ -397,6 +400,7 @@ void COSG::InitCameraConfig(void)
 
 	//解决Lines or Annotations (FeatureNode, etc.) 不被渲染的问题
 	osgEarth::GLUtils::setGlobalDefaults(mViewer->getCamera()->getOrCreateStateSet());
+	mViewer->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
 	// Realize the Viewer
 	mViewer->realize();
@@ -587,7 +591,7 @@ int COSG::AddAirPlane(void)
 {
 	//模型1
 	node_airfly_ = osgDB::readNodeFile("../data/aircrafts/F-16.ive");
-	
+
 	//没有这句代码，飞机是黑色的
 	node_airfly_->getOrCreateStateSet()->setMode(GL_RESCALE_NORMAL, osg::StateAttribute::ON); // 设置属性，光照法线
 
@@ -652,199 +656,159 @@ void COSG::DoPreLineNow()
 int COSG::AddAnnotation(void)
 { 
 	osg::Group* annoGroup = new osg::Group();
-	mRoot->addChild( annoGroup );
+	earth_map_node_->addChild( annoGroup );
 
 	// Make a group for labels
 	osg::Group* labelGroup = new osg::Group();
 	annoGroup->addChild( labelGroup );
 
 	osg::Group* editGroup = new osg::Group();
-	mRoot->addChild( editGroup );
+	earth_map_node_->addChild( editGroup );
 
 	// Style our labels:
 	Style labelStyle;
 	labelStyle.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
 	labelStyle.getOrCreate<TextSymbol>()->fill()->color() = Color::Yellow;
-	labelStyle.getOrCreate<TextSymbol>()->font() = "simhei.ttf";
+	labelStyle.getOrCreate<TextSymbol>()->font() = "../data/fonts/simhei.ttf";
 	labelStyle.getOrCreate<TextSymbol>()->encoding() = osgEarth::Symbology::TextSymbol::ENCODING_UTF8;
 
 	// A lat/long SRS for specifying points.
 	const SpatialReference* geoSRS = earth_map_node_->getMapSRS()->getGeographicSRS();
 
-	//--------------------------------------------------------------------
 
-	//label
+	//在地球上绘制地标
+	DrawLandMark(labelGroup, geoSRS, labelStyle);
+
+	//多边形
+	DrawPolygon(geoSRS, annoGroup);
+	labelGroup->addChild( new LabelNode(GeoPoint(geoSRS, 105, 35), "Antimeridian polygon", labelStyle) );
+
+	//线
+	DrawLine(geoSRS, annoGroup, labelGroup, labelStyle);
+
+	//圆
+	DrawCircle(geoSRS, annoGroup, editGroup);
+
+	//立体椭圆
+	DrawStereoEllipse(geoSRS, annoGroup, editGroup);
+
+	//矩形
+	DrawRectangle(geoSRS, annoGroup, editGroup);
+
+	//立体拉伸多边形
+	DrawStereoPolygon(geoSRS, annoGroup);
+
+	// 贴图
+	DrawChartlet (annoGroup, editGroup);
+
+
+	// a box that follows lines of latitude (rhumb line interpolation, the default)
+	// and flashes on and off using a cull callback.
 	{
-		Style pm;
-		pm.getOrCreate<IconSymbol>()->url()->setLiteral( "../data/placemark32.png" );
-		pm.getOrCreate<IconSymbol>()->declutter() = true;
-		pm.getOrCreate<TextSymbol>()->halo() = Color("#5f5f5f");
-		pm.getOrCreate<TextSymbol>()->font() = "simhei.ttf";
-		pm.getOrCreate<TextSymbol>()->encoding() = osgEarth::Symbology::TextSymbol::ENCODING_UTF8;
-
-		// bunch of pins:
-		std::string beijing, shanghai, xian, wuhan, shenzhen, chengdu,shangluo,lasa, kunming, nanjing,
-			wulumuqi, huhehaote;
-		unicodeToUTF8(L"北京",beijing);
-		unicodeToUTF8(L"上海", shanghai);
-		unicodeToUTF8(L"西安", xian);
-		unicodeToUTF8(L"武汉", wuhan);
-		unicodeToUTF8(L"深圳", shenzhen);
-		unicodeToUTF8(L"成都", chengdu);
-		unicodeToUTF8(L"商洛", shangluo);
-		unicodeToUTF8(L"拉萨", lasa);
-		unicodeToUTF8(L"昆明", kunming);
-		unicodeToUTF8(L"南京", nanjing);
-		unicodeToUTF8(L"乌鲁木齐", wulumuqi);
-		unicodeToUTF8(L"呼和浩特", huhehaote);
-
-		labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, 116.46, 39.92), beijing, pm));
-		labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, 121.4726444, 31.231706), shanghai, pm));
-		labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, 108.95, 34.27), xian , pm));
-		labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, 114.31, 30.52), wuhan  , pm));
-		labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, 114.06, 22.62), shenzhen  , pm));
-		labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, 104.07, 30.67), chengdu  , pm));
-		labelGroup->addChild(new PlaceNode(GeoPoint(geoSRS, 102.72, 25.05), kunming, pm));
-		labelGroup->addChild(new PlaceNode(GeoPoint(geoSRS, 118.78, 32.07), nanjing, pm));
-		labelGroup->addChild(new PlaceNode(GeoPoint(geoSRS, 87.68, 43.77), wulumuqi, pm));
-		labelGroup->addChild(new LabelNode(GeoPoint(geoSRS, 111.73, 40.83), huhehaote, labelStyle));
-		// test with an LOD:
-		osg::LOD* lod = new osg::LOD();
-		lod->addChild( new PlaceNode(GeoPoint(geoSRS, 109.93, 33.87), shangluo, pm), 0.0, 2e6);
-		labelGroup->addChild( lod );
-
-		// absolute altitude:
-		labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, 91.13, 29.65, 1000, ALTMODE_ABSOLUTE), lasa, pm));
-	}
-
-	//--------------------------------------------------------------------
-
-	// 多边形
-	{
+		struct C : public osg::NodeCallback {
+			void operator()(osg::Node* n, osg::NodeVisitor* nv) {
+				static int i=0;
+				i++;
+				if (i % 100 < 50)
+					traverse(n, nv);
+			}
+		};
 		Geometry* geom = new osgEarth::Symbology::Polygon();
-		geom->push_back(osg::Vec3d(95.0, 30.0, 0));
-		geom->push_back(osg::Vec3d(100.0, 30.0, 0));
-		geom->push_back(osg::Vec3d(100.0, 40.0, 0));
-		geom->push_back(osg::Vec3d(95.0, 40.0, 0));
+		geom->push_back( osg::Vec3d(120.950880f - 1.0f,  23.883192f + 1.0f, 0) );
+		geom->push_back( osg::Vec3d(120.950880f + 1.0f,  23.883192f + 1.0f, 0) );
+		geom->push_back( osg::Vec3d(120.950880f + 1.0f,  23.883192f - 2.0f, 0) );
+		geom->push_back( osg::Vec3d(120.950880f - 1.0f,  23.883192f - 2.0f, 0) );
 
-		osgEarth::Features::Feature* feature = new osgEarth::Features::Feature(geom, geoSRS);
-		//插值类型
+		Feature* feature = new Feature(geom, geoSRS);
 		feature->geoInterp() = GEOINTERP_RHUMB_LINE;
 
 		Style geomStyle;
 		geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Cyan;
 		geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
+		geomStyle.getOrCreate<ExtrusionSymbol>()->height() = 2500.00; // meters MSL
 		geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
-		geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-		geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
+		geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_NONE;
+		geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_MAP;
 
 		FeatureNode* fnode = new FeatureNode(feature, geomStyle);
 
+		// fnode->addCullCallback(new C());
+
 		annoGroup->addChild( fnode );
+
+		LabelNode* label = new LabelNode("Rhumb line polygon", labelStyle);
+		label->setPosition(GeoPoint(geoSRS, 120.950880f,  23.883192f));
+		labelGroup->addChild(label);
 	}
+	return 0;
+}
 
-	//--------------------------------------------------------------------
-
-	// 多边形
+void COSG::DrawChartlet (osg::Group* annoGroup, osg::Group* editGroup)
+{
 	{
-		Geometry* geom = new osgEarth::Symbology::Polygon();
-		geom->push_back( -160., -30. );
-		geom->push_back(  150., -20. );
-		geom->push_back(  160., -45. );
-		geom->push_back( -150., -40. );
-		Style geomStyle;
-
-		Feature* feature = new Feature(geom, geoSRS);
-		feature->geoInterp() = GEOINTERP_RHUMB_LINE;
-
-		geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Lime;
-		geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
-		geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
-		geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-		geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
-
-		FeatureNode* gnode = new FeatureNode(feature, geomStyle);
-		annoGroup->addChild( gnode );
-
-		labelGroup->addChild( new LabelNode(GeoPoint(geoSRS, 105, 35), "Antimeridian polygon", labelStyle) );
+		ImageOverlay* imageOverlay = 0L;
+		osg::Image* image = osgDB::readImageFile( "../data/images/flags/big/china.png" );
+		if ( image ){
+			imageOverlay = new ImageOverlay(earth_map_node_,image);
+			imageOverlay->setBounds( Bounds( 115, 39, 116, 40.0) );// 左下 右上
+			annoGroup->addChild( imageOverlay );
+			editGroup->addChild( new ImageOverlayEditor(imageOverlay) );
+		}
 	}
+}
 
-	//--------------------------------------------------------------------
+void COSG::DrawStereoPolygon(const SpatialReference* geoSRS, osg::Group* annoGroup)
+{
+
+	Geometry* utah = new osgEarth::Symbology::Polygon();
+	utah->push_back( 114.052, 37.0   );
+	utah->push_back( 109.054, 37.0   );
+	utah->push_back( 109.054, 41.0   );
+	utah->push_back( 111.040, 41.0   );
+	utah->push_back( 111.080, 42.059 );
+	utah->push_back( 114.080, 42.024 );
 
 
+	Style utahStyle;
+	utahStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
+	utahStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::White, 0.8);
 
-	//线
-	FeatureNode* pathNode = 0;
-	{
-		Geometry* path = new LineString();
-		path->push_back( osg::Vec3d(108.95, 34.27, 0) );//西安
-		path->push_back( osg::Vec3d(116.46, 39.92, 0) );//北京
+	osgEarth::Features::Feature*     utahFeature = new osgEarth::Features::Feature(utah, geoSRS);
+	utahFeature->geoInterp() = osgEarth::GeoInterpolation::GEOINTERP_GREAT_CIRCLE;//插值类型
 
-		Feature* pathFeature = new Feature(path, geoSRS);
-		pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
+	FeatureNode* featureNode = new FeatureNode(utahFeature, utahStyle);
+	annoGroup->addChild( featureNode );
 
-		Style pathStyle;
-		pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::White;
-		pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 1.0f;
-		//对线几何进行曲面细分，使任何线段的长度都不会超过此值
-		pathStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
-		//pathStyle.getOrCreate<PointSymbol>()->size() = 5;
-		//pathStyle.getOrCreate<PointSymbol>()->fill()->color() = Color::Red;
-		pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-		pathStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
+}
 
-		//OE_INFO << "Path extent = " << pathFeature->getExtent().toString() << std::endl;
+void COSG::DrawRectangle(const SpatialReference* geoSRS, osg::Group* annoGroup, osg::Group* editGroup)
+{
 
-		pathNode = new FeatureNode(pathFeature, pathStyle);
-		annoGroup->addChild( pathNode );
+	// 矩形
+	Style rectStyle;
+	rectStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Green, 0.5);
+	rectStyle.getOrCreate<ExtrusionSymbol>()->height() = 25000.0; // meters MSL
+	rectStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+	rectStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+	RectangleNode* rect = new RectangleNode(
+		GeoPoint(geoSRS, 87.68, 43.77),//乌鲁木齐
+		Distance(500, Units::KILOMETERS ),
+		Distance(500, Units::KILOMETERS ),
+		rectStyle);
+	annoGroup->addChild( rect );
 
-		labelGroup->addChild( new LabelNode(GeoPoint(geoSRS,112.705, 37.095), "Great circle path", labelStyle) );
-	}
+	editGroup->addChild( new RectangleNodeEditor(rect) );
 
-	//--------------------------------------------------------------------
+}
 
-	// 圆
-	{
-		Style circleStyle;
-		circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);//青色
-		circleStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-		circleStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
-
-		CircleNode* circle = new CircleNode();
-			circle->set(
-			GeoPoint(geoSRS, 118.78, 32.07, 1000., ALTMODE_RELATIVE),//南京
-			Distance(300, Units::KILOMETERS), //半径
-			circleStyle, Angle(-45.0, Units::DEGREES), Angle(45.0, Units::DEGREES), true);
-		annoGroup->addChild( circle );
-
-		editGroup->addChild( new CircleNodeEditor(circle) );
-	}
-
-	{
-		Style circleStyle;
-		circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Red, 0.5);
-		circleStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-		circleStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
-
-		CircleNode* circle = new CircleNode();
-		circle->set(
-			GeoPoint(geoSRS, 118.78, 32.07, 1000., ALTMODE_RELATIVE),//南京
-			Distance(300, Units::KILOMETERS),
-			circleStyle, Angle(45.0, Units::DEGREES), Angle(360.0 - 45.0, Units::DEGREES), true);
-		annoGroup->addChild( circle );
-
-		editGroup->addChild( new CircleNodeEditor(circle) );
-	}
-
-	//--------------------------------------------------------------------
-
-	// 立体椭圆
+void COSG::DrawStereoEllipse(const SpatialReference* geoSRS, osg::Group* annoGroup, osg::Group* editGroup)
+{
 	{
 		Style ellipseStyle;
 		ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Orange, 0.75);
 		ellipseStyle.getOrCreate<ExtrusionSymbol>()->height() = 25000.0; // meters MSL
 		osgEarth::Annotation::EllipseNode* ellipse = new osgEarth::Annotation::EllipseNode();
-			ellipse->set(
+		ellipse->set(
 			GeoPoint(geoSRS, 102.72, 25.05, 0.0, ALTMODE_RELATIVE),//云南
 			Distance(250, Units::MILES),
 			Distance(100, Units::MILES),
@@ -871,6 +835,7 @@ int COSG::AddAnnotation(void)
 		annoGroup->addChild(circle);
 		editGroup->addChild(new CircleNodeEditor(circle));
 	}
+
 	{
 		Style ellipseStyle;
 		ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Blue, 0.75);
@@ -889,67 +854,170 @@ int COSG::AddAnnotation(void)
 
 		editGroup->addChild( new EllipseNodeEditor(ellipse) );
 	}
-
-	//--------------------------------------------------------------------
-
-	{
-		// 矩形
-		Style rectStyle;
-		rectStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Green, 0.5);
-		rectStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-		rectStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
-		RectangleNode* rect = new RectangleNode(
-			GeoPoint(geoSRS, 87.68, 43.77),//乌鲁木齐
-			Distance(300, Units::KILOMETERS ),
-			Distance(600, Units::KILOMETERS ),
-			rectStyle);
-		annoGroup->addChild( rect );
-
-		editGroup->addChild( new RectangleNodeEditor(rect) );
-	}    
-
-	//--------------------------------------------------------------------
-
-	//立体拉伸多边形
-	{
-		Geometry* utah = new osgEarth::Symbology::Polygon();
-		utah->push_back( 114.052, 37.0   );
-		utah->push_back( 109.054, 37.0   );
-		utah->push_back( 109.054, 41.0   );
-		utah->push_back( 111.040, 41.0   );
-		utah->push_back( 111.080, 42.059 );
-		utah->push_back( 114.080, 42.024 );
-
-		Style utahStyle;
-		utahStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
-		utahStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::White, 0.8);
-
-		Feature*     utahFeature = new Feature(utah, geoSRS);
-		FeatureNode* featureNode = new FeatureNode(utahFeature, utahStyle);
-		annoGroup->addChild( featureNode );
-	}
-
-	//--------------------------------------------------------------------
-
-	// 贴图
-	{
-		ImageOverlay* imageOverlay = 0L;
-		osg::Image* image = osgDB::readImageFile( "../data/placemark32.png" );
-		if ( image )
-		{
-			imageOverlay = new ImageOverlay(earth_map_node_,image);
-			imageOverlay->setBounds( Bounds( 115, 39, 116, 40.0) );// 左下 右上
-			annoGroup->addChild( imageOverlay );
-			editGroup->addChild( new ImageOverlayEditor(imageOverlay) );
-		}
-	}
-
-	//--------------------------------------------------------------------
-	mViewer->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-
-	return 0;
 }
 
+void COSG::DrawCircle(const SpatialReference* geoSRS, osg::Group* annoGroup, osg::Group* editGroup)
+{
+	// 圆
+	{
+		Style circleStyle;
+		circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);//青色
+		circleStyle.getOrCreate<ExtrusionSymbol>()->height() = 25000.0; // meters MSL
+		circleStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+		circleStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+
+		CircleNode* circle = new CircleNode();
+		circle->set(
+			GeoPoint(geoSRS, 118.78, 32.07, 1000., ALTMODE_RELATIVE),//南京
+			Distance(300, Units::KILOMETERS), //半径
+			circleStyle, Angle(-45.0, Units::DEGREES), Angle(45.0, Units::DEGREES), true);
+		annoGroup->addChild( circle );
+
+		editGroup->addChild( new CircleNodeEditor(circle) );
+	}
+
+	{
+		Style circleStyle;
+		circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Red, 0.5);
+		circleStyle.getOrCreate<ExtrusionSymbol>()->height() = 25000.0; // meters MSL
+		circleStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+		circleStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+
+		CircleNode* circle = new CircleNode();
+		circle->set(
+			GeoPoint(geoSRS, 118.78, 32.07, 1000., ALTMODE_RELATIVE),//南京
+			Distance(300, Units::KILOMETERS),
+			circleStyle, Angle(45.0, Units::DEGREES), Angle(360.0 - 45.0, Units::DEGREES), true);
+		annoGroup->addChild( circle );
+
+		editGroup->addChild( new CircleNodeEditor(circle) );
+	}
+}
+
+void COSG::DrawLine(const SpatialReference* geoSRS, osg::Group* annoGroup, osg::Group* labelGroup, Style labelStyle)
+{
+	Geometry* path = new LineString();
+	path->push_back( osg::Vec3d(108.95, 34.27, 0) );//西安
+	path->push_back( osg::Vec3d(116.46, 39.92, 0) );//北京
+
+	Feature* pathFeature = new Feature(path, geoSRS);
+	pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
+
+	Style pathStyle;
+	pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::White;
+	pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 1.0f;
+
+	//对线几何进行曲面细分，使任何线段的长度都不会超过此值
+	pathStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
+	//pathStyle.getOrCreate<PointSymbol>()->size() = 5;
+	//pathStyle.getOrCreate<PointSymbol>()->fill()->color() = Color::Red;
+	pathStyle.getOrCreate<ExtrusionSymbol>()->height() = 25000.0; // meters MSL
+	pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+	pathStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
+
+	OE_INFO << "Path extent = " << pathFeature->getExtent().toString() << std::endl;
+
+	FeatureNode* pathNode = 0;
+	pathNode = new FeatureNode(pathFeature, pathStyle);
+	annoGroup->addChild( pathNode );
+
+	labelGroup->addChild( new LabelNode(GeoPoint(geoSRS,112.705, 37.095), "Great circle path", labelStyle) );
+}
+
+void COSG::DrawPolygon(const SpatialReference* geoSRS, osg::Group* annoGroup)
+{
+	Geometry* geom = new osgEarth::Symbology::Polygon();
+	geom->push_back(osg::Vec3d(95.0, 30.0, 0));
+	geom->push_back(osg::Vec3d(100.0, 30.0, 0));
+	geom->push_back(osg::Vec3d(100.0, 40.0, 0));
+	geom->push_back(osg::Vec3d(95.0, 40.0, 0));
+
+	osgEarth::Features::Feature* feature = new osgEarth::Features::Feature(geom, geoSRS);
+	//插值类型
+	feature->geoInterp() = GEOINTERP_RHUMB_LINE;
+
+	Style geomStyle;
+	geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Green;
+	geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
+	geomStyle.getOrCreate<ExtrusionSymbol>()->height() = 25000.0; // meters MSL
+	geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
+	geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+	geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
+
+	FeatureNode* fnode = new FeatureNode(feature, geomStyle);
+
+	annoGroup->addChild( fnode );
+
+	// 多边形
+	{
+		Geometry* geom = new osgEarth::Symbology::Polygon();
+		geom->push_back( -160., -30. );
+		geom->push_back(  150., -20. );
+		geom->push_back(  160., -45. );
+		geom->push_back( -150., -40. );
+
+
+		Feature* feature = new Feature(geom, geoSRS);
+		feature->geoInterp() = GEOINTERP_RHUMB_LINE;
+
+		Style geomStyle;
+		geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Green;
+		geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
+		geomStyle.getOrCreate<ExtrusionSymbol>()->height() = 25000.0; // meters MSL
+		geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
+		geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+		geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
+
+		FeatureNode* gnode = new FeatureNode(feature, geomStyle);
+		annoGroup->addChild( gnode );
+	}
+}
+
+// 在地球上绘制地标
+void COSG::DrawLandMark(osg::Group* labelGroup, const SpatialReference* geoSRS, Style labelStyle)
+{
+	Style pm;
+	pm.getOrCreate<IconSymbol>()->url()->setLiteral( "../data/placemark32.png" );
+	pm.getOrCreate<IconSymbol>()->declutter() = true;
+	pm.getOrCreate<TextSymbol>()->halo() = Color("#5f5f5f");
+	pm.getOrCreate<TextSymbol>()->font() = "simhei.ttf";
+	pm.getOrCreate<TextSymbol>()->encoding() = osgEarth::Symbology::TextSymbol::ENCODING_UTF8;
+
+	// bunch of pins:
+	std::string beijing, shanghai, xian, wuhan, shenzhen, chengdu,shangluo,lasa, kunming, nanjing,
+		wulumuqi, huhehaote;
+	unicodeToUTF8(L"北京",beijing);
+	unicodeToUTF8(L"上海", shanghai);
+	unicodeToUTF8(L"西安", xian);
+	unicodeToUTF8(L"武汉", wuhan);
+	unicodeToUTF8(L"深圳", shenzhen);
+	unicodeToUTF8(L"成都", chengdu);
+	unicodeToUTF8(L"商洛", shangluo);
+	unicodeToUTF8(L"拉萨", lasa);
+	unicodeToUTF8(L"昆明", kunming);
+	unicodeToUTF8(L"南京", nanjing);
+	unicodeToUTF8(L"乌鲁木齐", wulumuqi);
+	unicodeToUTF8(L"呼和浩特", huhehaote);
+
+	labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, 116.46, 39.92), beijing, pm));
+	labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, 121.4726444, 31.231706), shanghai, pm));
+	labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, 108.95, 34.27), xian , pm));
+	labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, 114.31, 30.52), wuhan  , pm));
+	labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, 114.06, 22.62), shenzhen  , pm));
+	labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, 104.07, 30.67), chengdu  , pm));
+	labelGroup->addChild(new PlaceNode(GeoPoint(geoSRS, 102.72, 25.05), kunming, pm));
+	labelGroup->addChild(new PlaceNode(GeoPoint(geoSRS, 118.78, 32.07), nanjing, pm));
+	labelGroup->addChild(new PlaceNode(GeoPoint(geoSRS, 87.68, 43.77), wulumuqi, pm));
+	labelGroup->addChild(new LabelNode(GeoPoint(geoSRS, 111.73, 40.83), huhehaote, labelStyle));
+
+	// test with an LOD:
+	osg::LOD* lod = new osg::LOD();
+	lod->addChild( new PlaceNode(GeoPoint(geoSRS, 109.93, 33.87), shangluo, pm), 0.0, 2e6);
+	labelGroup->addChild( lod );
+
+	// absolute altitude:
+	labelGroup->addChild( new PlaceNode(GeoPoint(geoSRS, 91.13, 29.65, 1000, ALTMODE_ABSOLUTE), lasa, pm));
+}
 
 // 创建飞机历史航迹
 void COSG::AddBuildHistoryRoute(osg::MatrixTransform* scaler, float lineWidth)
@@ -1024,7 +1092,7 @@ int COSG::FlyTo(double longitude, double latitude, double altitude, double heigh
 
 int COSG::StartFly(void)
 {	
-	
+
 	return 0;
 }
 

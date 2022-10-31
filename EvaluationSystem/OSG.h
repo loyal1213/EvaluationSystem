@@ -140,6 +140,24 @@ public:
 	int AddAirPlane(void);
 	void DoPreLineNow();
 	int AddAnnotation(void);
+
+	void DrawChartlet (osg::Group* annoGroup, osg::Group* editGroup);
+
+	void DrawStereoPolygon(const SpatialReference* geoSRS, osg::Group* annoGroup);
+
+	void DrawRectangle(const SpatialReference* geoSRS, osg::Group* annoGroup, osg::Group* editGroup);
+
+	void DrawStereoEllipse(const SpatialReference* geoSRS, osg::Group* annoGroup, osg::Group* editGroup);
+
+	void DrawCircle(const SpatialReference* geoSRS, osg::Group* annoGroup, osg::Group* editGroup);
+
+	void DrawLine(const SpatialReference* geoSRS, osg::Group* annoGroup, osg::Group* labelGroup, Style labelStyle);
+
+	void DrawPolygon(const SpatialReference* geoSRS, osg::Group* annoGroup);
+
+	// 在地球上绘制地标
+	void DrawLandMark(osg::Group* labelGroup, const SpatialReference* geoSRS, Style labelStyle);
+
 	osg::ref_ptr<osg::AnimationPath> CreateAnimationPath(const GeoPoint& pos, const SpatialReference* mapSRS, float radius, double looptime);
 	osg::ref_ptr<osg::Node> CreatePlane(osg::Node* node, const GeoPoint& pos, const SpatialReference* mapSRS, double radius, double time);
 public:
